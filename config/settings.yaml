@@ -1,0 +1,21 @@
+# Default configuration for Time Tracker
+# User can edit this file to customize behavior
+
+# German-specific settings
+german_state: BY  # Two-letter state code (e.g., BY for Bavaria, NW for North Rhine-Westphalia)
+respect_holidays: true
+respect_weekends: true
+
+# Auto-pause settings
+auto_pause_on_lock: true
+ask_on_unlock: true
+auto_pause_threshold_minutes: 5  # Only ask if absence was longer than this
+
+# Report settings
+default_report_template: monthly_report.txt
+reports_directory: null  # null = use default (Documents/TimeTrackerReports)
+
+# UI settings
+show_seconds_in_tray: true
+minimize_to_tray: true
+start_with_windows: false
