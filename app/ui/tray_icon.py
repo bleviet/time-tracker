@@ -23,6 +23,7 @@ from app.infra.repository import TaskRepository
 from app.domain.models import Task
 from .dialogs import InterruptionDialog
 from .main_window import MainWindow
+from .report_window import ReportWindow
 from app.utils import get_resource_path
 
 
@@ -215,54 +216,12 @@ class SystemTrayApp:
             QMessageBox.warning(None, "Error", f"Failed to stop task:\n{e}")
     
     def _generate_report_sync(self):
-        """Generate a report for the current month"""
+        """Open the report generation wizard"""
         try:
-            # Get first and last day of current month
-            today = datetime.date.today()
-            start_date = datetime.datetime(today.year, today.month, 1)
-            
-            # Calculate last day of month
-            if today.month == 12:
-                next_month = datetime.datetime(today.year + 1, 1, 1)
-            else:
-                next_month = datetime.datetime(today.year, today.month + 1, 1)
-            end_date = next_month - datetime.timedelta(seconds=1)
-            
-            # Define output paths
-            output_dir = Path("reports")
-            report_file = output_dir / f"{start_date.year}-{start_date.month:02d}_report.csv"
-            log_file = output_dir / f"{start_date.year}-{start_date.month:02d}_details.csv"
-
-            # Generate and save summary report
-            self.loop.run_until_complete(
-                self.report_service.generate_report(
-                    "monthly_report.csv",
-                    start_date,
-                    end_date,
-                    output_file=report_file
-                )
-            )
-            
-            # Generate and save detailed log
-            self.loop.run_until_complete(
-                self.report_service.generate_report(
-                    "monthly_log.csv",
-                    start_date,
-                    end_date,
-                    output_file=log_file
-                )
-            )
-            
-            # Show notification
-            self.tray_icon.showMessage(
-                "Reports Generated",
-                f"Saved to {output_dir.absolute()}",
-                QSystemTrayIcon.Information,
-                5000
-            )
-            
+            self.report_window = ReportWindow()
+            self.report_window.show()
         except Exception as e:
-            QMessageBox.warning(None, "Error", f"Failed to generate report:\n{e}")
+            QMessageBox.warning(None, "Error", f"Failed to open report wizard:\n{e}")
     
     def update_tooltip(self, text: str, seconds: int):
         """Update the tray icon tooltip with current time"""
