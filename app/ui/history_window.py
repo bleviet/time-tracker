@@ -1,17 +1,13 @@
-"""
-History/Daily Log Window.
-"""
-
 import asyncio
 from datetime import datetime, timedelta
 from typing import List
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QCalendarWidget, QTableWidget, 
-    QTableWidgetItem, QPushButton, QLabel, QHeaderView, QMessageBox
+    QTableWidgetItem, QPushButton, QLabel, QHeaderView, QMessageBox, QMenu
 )
 from PySide6.QtCore import Qt, QDate
-from PySide6.QtGui import QColor, QPalette
+from PySide6.QtGui import QColor, QPalette, QAction
 
 from app.domain.models import Task, TimeEntry
 from app.infra.repository import TaskRepository, TimeEntryRepository
@@ -224,6 +220,12 @@ class HistoryWindow(QWidget):
         self.table.setColumnCount(5)
         self.table.setHorizontalHeaderLabels(["Task", "Start", "End", "Duration", "Notes"])
         self.table.verticalHeader().setVisible(False)
+        self.table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.table.setEditTriggers(QTableWidget.NoEditTriggers)
+        
+        # Context Menu
+        self.table.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.table.customContextMenuRequested.connect(self._show_context_menu)
         
         # Configure header
         header = self.table.horizontalHeader()
@@ -263,6 +265,63 @@ class HistoryWindow(QWidget):
         right_layout.addLayout(btn_layout)
         layout.addLayout(right_layout, stretch=3) # Make right side wider
         
+    def _show_context_menu(self, pos):
+        """Show context menu for table"""
+        index = self.table.indexAt(pos)
+        if not index.isValid():
+            return
+            
+        menu = QMenu(self)
+        edit_action = QAction("Edit", self)
+        delete_action = QAction("Delete", self)
+        
+        edit_action.triggered.connect(self._edit_current_entry)
+        delete_action.triggered.connect(self._delete_current_entry)
+        
+        menu.addAction(edit_action)
+        menu.addAction(delete_action)
+        menu.exec(self.table.mapToGlobal(pos))
+        
+    def _edit_current_entry(self):
+        """Edit the currently selected entry"""
+        row = self.table.currentRow()
+        if row < 0 or row >= len(self.current_entries):
+            return
+            
+        entry = self.current_entries[row]
+        
+        dialog = ManualEntryDialog(self.tasks, self)
+        dialog.set_data(entry)
+        
+        if dialog.exec():
+            data = dialog.get_data()
+            try:
+                self.loop.run_until_complete(self._update_entry(entry, data))
+                self._on_date_selected() # Refresh
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Failed to update entry: {e}")
+
+    def _delete_current_entry(self):
+        """Delete the currently selected entry"""
+        row = self.table.currentRow()
+        if row < 0 or row >= len(self.current_entries):
+            return
+            
+        entry = self.current_entries[row]
+        
+        reply = QMessageBox.question(
+            self, "Confirm Delete", 
+            "Are you sure you want to delete this entry?",
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No
+        )
+        
+        if reply == QMessageBox.Yes:
+            try:
+                self.loop.run_until_complete(self.entry_repo.delete(entry.id))
+                self._on_date_selected() # Refresh
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Failed to delete entry: {e}")
+
     def _load_tasks(self):
         """Load tasks for sorting/displaying and for the manual entry dialog"""
         try:
@@ -296,7 +355,7 @@ class HistoryWindow(QWidget):
     async def _fetch_entries(self, start, end):
         all_entries = []
         for task in self.tasks:
-            entries = await self.entry_repo.get_by_task(task.id, start, end)
+            entries = await self.entry_repo.get_overlapping(task.id, start, end)
             all_entries.extend(entries)
             
         # Sort by start time
@@ -322,7 +381,15 @@ class HistoryWindow(QWidget):
             self.table.setItem(row, 2, QTableWidgetItem(end_str))
             
             # Duration
-            duration = entry.duration_seconds
+            # If active, duration might be dynamic, but here we show whatever is in DB or calculated up to now
+            # For active tasks, duration in DB might be 0 until stopped.
+            # Ideally we should calculate it live or show "Running"
+            if entry.end_time is None:
+                # Calculate duration up to now
+                duration = int((datetime.now() - entry.start_time).total_seconds())
+            else:
+                duration = entry.duration_seconds
+                
             day_total_seconds += duration
             
             # Accumulate for summary
@@ -387,10 +454,14 @@ class HistoryWindow(QWidget):
         # Calculate duration
         start = data['start_time']
         end = data['end_time']
+        
+        # Check Overlap
+        if await self.entry_repo.has_overlap(start, end):
+            raise ValueError("Time entry overlaps with an existing entry.")
+            
         duration = int((end - start).total_seconds())
         
         if duration < 0:
-            # Handle overnight? For now just assume same day as validated in dialog
             duration = 0
             
         entry = TimeEntry(
@@ -402,3 +473,38 @@ class HistoryWindow(QWidget):
         )
         
         await self.entry_repo.create(entry)
+
+    async def _update_entry(self, entry: TimeEntry, data: dict):
+        """Update existing entry with new data"""
+        task_id = data['task_id']
+        
+        # Handle new task creation if needed
+        if task_id is None:
+             existing = next((t for t in self.tasks if t.name.lower() == data['task_name'].lower()), None)
+             if existing:
+                 task_id = existing.id
+             else:
+                 new_task = Task(name=data['task_name'])
+                 created_task = await self.task_repo.create(new_task)
+                 self.tasks.append(created_task)
+                 task_id = created_task.id
+        
+        start = data['start_time']
+        end = data['end_time']
+        
+        # Check Overlap (Ignore current entry ID)
+        if await self.entry_repo.has_overlap(start, end, ignore_id=entry.id):
+            raise ValueError("Time entry overlaps with an existing entry.")
+            
+        duration = int((end - start).total_seconds())
+        if duration < 0:
+            duration = 0
+            
+        # Update fields
+        entry.task_id = task_id
+        entry.start_time = start
+        entry.end_time = end
+        entry.duration_seconds = duration
+        entry.notes = data['notes']
+        
+        await self.entry_repo.update(entry)

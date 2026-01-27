@@ -197,3 +197,75 @@ class TimeEntryRepository:
             )
             entry_models = result.scalars().all()
             return [TimeEntry.model_validate(em) for em in entry_models]
+
+    async def delete(self, entry_id: int) -> None:
+        """Delete a time entry by ID"""
+        session = await self._get_session()
+        async with session:
+            await session.execute(
+                select(TimeEntryModel).where(TimeEntryModel.id == entry_id)
+            )
+            # Fetch first to ensure it exists or directly delete?
+            # SQLAlchemy delete statement is efficient.
+            from sqlalchemy import delete
+            await session.execute(
+                delete(TimeEntryModel).where(TimeEntryModel.id == entry_id)
+            )
+            await session.commit()
+
+    async def has_overlap(self, start_time: datetime, end_time: datetime, ignore_id: Optional[int] = None) -> bool:
+        """
+        Check if there are any existing entries that overlap with the given time range.
+        
+        Args:
+            start_time: Start of the proposed entry
+            end_time: End of the proposed entry
+            ignore_id: Optional ID to exclude from check (for updates)
+            
+        Returns:
+            True if overlap exists, False otherwise
+        """
+        session = await self._get_session()
+        async with session:
+            # Overlap logic: (StartA < EndB) and (EndA > StartB)
+            # Use coalesce for end_time to handle active tasks (end_time is None -> assume now)
+            # But query against database NULLs is tricky. 
+            # If end_time is NULL in DB, it means it's active.
+            # Active tasks effectively extend to infinity (or 'now') for overlap purposes.
+            # However, for manual entry plausibility, we mainly care about completed entries or strictly active ones.
+            # Let's keep it simple: just check typical overlap logic.
+            
+            # Simple overlap: 
+            # existing.start < new.end AND existing.end > new.start
+            
+            query = select(TimeEntryModel).where(
+                and_(
+                    TimeEntryModel.start_time < end_time,
+                    # Handle NULL end_time (active task) as overlap if start < new.end
+                    # Ideally active task end_time is effectively "now" or "future"
+                    # For safety, let's treat NULL end_time as "overlapping everything after start"
+                    (TimeEntryModel.end_time == None) | (TimeEntryModel.end_time > start_time)
+                )
+            )
+            
+            if ignore_id:
+                query = query.where(TimeEntryModel.id != ignore_id)
+                
+            result = await session.execute(query.limit(1))
+            return result.first() is not None
+
+    async def get_overlapping(self, task_id: int, start_time: datetime, end_time: datetime) -> List[TimeEntry]:
+        """Get all time entries for a specific task that overlap with the given time range"""
+        session = await self._get_session()
+        async with session:
+            query = select(TimeEntryModel).where(
+                and_(
+                    TimeEntryModel.task_id == task_id,
+                    TimeEntryModel.start_time < end_time,
+                    (TimeEntryModel.end_time == None) | (TimeEntryModel.end_time > start_time)
+                )
+            ).order_by(TimeEntryModel.start_time.desc())
+            
+            result = await session.execute(query)
+            entry_models = result.scalars().all()
+            return [TimeEntry.model_validate(em) for em in entry_models]

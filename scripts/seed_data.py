@@ -5,6 +5,7 @@ Populates the database with realistic data for testing and demo purposes.
 
 import asyncio
 import sys
+import os
 import random
 from datetime import datetime, timedelta, date
 from pathlib import Path
@@ -16,7 +17,27 @@ from app.infra.repository import TaskRepository, TimeEntryRepository
 from app.domain.models import Task, TimeEntry
 from app.infra.db import get_engine, Base
 
+async def reset_database():
+    """Delete the existing database file to ensure a fresh seed"""
+    if os.name == 'nt':  # Windows
+        data_dir = Path(os.getenv('APPDATA')) / 'TimeTracker'
+    else:  # Linux/Mac
+        data_dir = Path.home() / '.local' / 'share' / 'timetracker'
+    
+    db_path = data_dir / 'timetracker.db'
+    if db_path.exists():
+        print(f"Removing existing database at: {db_path}")
+        try:
+            db_path.unlink()
+            print("Database removed.")
+        except PermissionError:
+            print("ERROR: Could not remove database. It might be in use.")
+            sys.exit(1)
+    else:
+        print(f"No existing database found at: {db_path}")
+
 async def seed():
+    await reset_database()
     print("Starting data seeding...")
     
     # Initialize DB (creates tables if needed)

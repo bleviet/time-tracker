@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, QDate, QTime
 
-from app.domain.models import Task
+from app.domain.models import Task, TimeEntry
 
 
 class InterruptionDialog(QDialog):
@@ -115,13 +115,43 @@ class ManualEntryDialog(QDialog):
         button_box.rejected.connect(self.reject)
         layout.addWidget(button_box)
     
+    def set_data(self, entry: TimeEntry):
+        """Pre-fill dialog with existing entry data"""
+        self.setWindowTitle("Edit Entry")
+        
+        # Set Task
+        index = self.task_combo.findData(entry.task_id)
+        if index >= 0:
+            self.task_combo.setCurrentIndex(index)
+            
+        # Set Date
+        self.date_edit.setDate(entry.start_time.date())
+        
+        # Set Time
+        self.start_time.setTime(entry.start_time.time())
+        if entry.end_time:
+            self.end_time.setTime(entry.end_time.time())
+            
+        # Set Notes
+        if entry.notes:
+            self.notes_edit.setText(entry.notes)
+
     def _validate_and_accept(self):
         """Validate input before accepting"""
-        start = self.start_time.time()
-        end = self.end_time.time()
+        start_time = self.start_time.time().toPython()
+        end_time = self.end_time.time().toPython()
+        date = self.date_edit.date().toPython()
         
-        if start >= end:
+        start_dt = datetime.combine(date, start_time)
+        end_dt = datetime.combine(date, end_time)
+        now = datetime.now()
+        
+        if start_dt >= end_dt:
             QMessageBox.warning(self, "Invalid Time", "End time must be after start time.")
+            return
+            
+        if end_dt > now:
+            QMessageBox.warning(self, "Invalid Time", "Cannot add entries in the future.")
             return
             
         self.accept()
