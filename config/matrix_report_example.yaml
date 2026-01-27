@@ -1,0 +1,28 @@
+# Configuration for Monthly Matrix Report
+
+period: "01.2026"
+output_path: "reports/january_2026.csv"
+
+# Optional: Define vacation/sickness days
+time_off_configs:
+  - task_name: "Vacation"
+    daily_hours: 8.0
+    days:
+      - 01.01.2026
+      - 02.01.2026
+  - task_name: "Sickness"
+    daily_hours: 8.0
+    days:
+      - 05.01.2026
+
+# Tasks to list but exclude from totals
+excluded_tasks:
+  - "Pause"
+  - "Break"
+  - "Lunch"
+
+# Optional: Define extra empty columns for your template
+user_columns:
+  - "Project Code"
+  - "Billable?"
+  - "Random"

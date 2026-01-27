@@ -246,6 +246,8 @@ class ReportWindow(QDialog):
 
         self.loop = asyncio.get_event_loop()
         self.settings = get_settings()
+        self.report_settings_path = self.settings.config_dir / "report_settings.yaml" if self.settings.config_dir else Path("report_settings.yaml")
+        self.report_history = {} # Cache for history
         self.tasks: List[Task] = []
         
         # State
@@ -403,7 +405,7 @@ class ReportWindow(QDialog):
     def _browse_file(self):
         filename, _ = QFileDialog.getSaveFileName(
             self, "Save Report", 
-            f"report_{self.selected_date.strftime('%Y-%m')}.csv",
+            f"report_{self.selected_date.strftime('%m_%Y')}.csv",
             "CSV Files (*.csv)"
         )
         if filename:
@@ -420,7 +422,7 @@ class ReportWindow(QDialog):
             
             # Update default filename if not manually set (simple check)
             if "report_" in self.path_input.text() or "No file" in self.path_input.text():
-                 self.path_input.setText(f"report_{self.selected_date.strftime('%Y-%m')}.csv")
+                 self.path_input.setText(f"report_{self.selected_date.strftime('%m_%Y')}.csv")
                  
         except ValueError:
             pass
@@ -452,6 +454,7 @@ class ReportWindow(QDialog):
         self.month_combo.blockSignals(False)
         
         self._render_calendar()
+        self._apply_history_for_period() # Restore settings for this new period
         self._update_filename_if_default()
 
     def _update_filename_if_default(self):
@@ -459,7 +462,7 @@ class ReportWindow(QDialog):
         current_text = self.path_input.text()
         # Heuristic: if it looks like a default filename or is empty
         if "report_" in current_text or "No file" in current_text:
-            self.path_input.setText(f"report_{self.selected_date.strftime('%Y-%m')}.csv")
+            self.path_input.setText(f"report_{self.selected_date.strftime('%m_%Y')}.csv")
             self.path_input.setStyleSheet("color: black;") # Ensure visible
 
     def _render_calendar(self):
@@ -512,9 +515,111 @@ class ReportWindow(QDialog):
         # Initial Render
         self._render_calendar()
         
-        # Try to load existing config if available (mock logic for now for "persistence")
-        # In a real app, we'd read the YAML and pre-fill the UI.
+        # Load persisted settings
+        self._load_settings()
+
+    def _load_settings(self):
+        """Load settings from YAML"""
+        if not self.report_settings_path.exists():
+            return
+            
+        try:
+            with open(self.report_settings_path, 'r', encoding='utf-8') as f:
+                data = yaml.safe_load(f) or {}
+                
+            # 1. Load Defaults (Exclusions)
+            defaults = data.get('defaults', {})
+            excluded_names = defaults.get('excluded_tasks', [])
+            for name, cb in self.excluded_tasks_checks.items():
+                if name in excluded_names:
+                    cb.setChecked(True)
+            
+            # 2. Load History for current period
+            self.report_history = data.get('history', {})
+            self._apply_history_for_period()
+            
+        except Exception as e:
+            print(f"Failed to load settings: {e}")
+
+    def _apply_history_for_period(self):
+        """Apply saved time off data for the selected period"""
+        period_key = self.selected_date.strftime("%m.%Y")
+        period_data = self.report_history.get(period_key, {})
+        # Support fallback to old format for migration if needed, but let's stick to new
+        if not period_data:
+             period_data = self.report_history.get(self.selected_date.strftime("%Y-%m"), {})
+        time_off_data = period_data.get('time_off', [])
         
+        # Clear current calendar state first
+        for btn in self.day_buttons.values():
+            if btn.current_state != DayButton.STATE_WORK:
+                btn.set_state(DayButton.STATE_WORK)
+        
+        # Apply saved states
+        # Data structure: [{'task_name': 'Vacation', 'days': ['2026-01-01', ...]}, ...]
+        for item in time_off_data:
+            t_name = item.get('task_name')
+            days = item.get('days', [])
+            
+            state = DayButton.STATE_WORK
+            if t_name == "Vacation":
+                state = DayButton.STATE_VACATION
+            elif t_name == "Sickness":
+                state = DayButton.STATE_SICKNESS
+            
+            if state != DayButton.STATE_WORK:
+                for day_str in days:
+                    try:
+                        # Try German format first, then ISO
+                        if "." in day_str:
+                            d = datetime.datetime.strptime(day_str, "%d.%m.%Y").date()
+                        else:
+                            d = datetime.date.fromisoformat(day_str)
+                            
+                        if d in self.day_buttons:
+                            self.day_buttons[d].set_state(state)
+                    except ValueError:
+                        pass
+        
+    def _save_settings(self):
+        """Save current settings to YAML"""
+        # 1. Gather Exclusions
+        excluded = [name for name, cb in self.excluded_tasks_checks.items() if cb.isChecked()]
+        
+        # 2. Gather Time Off for current period
+        vacation_days = []
+        sickness_days = []
+        for date_obj, btn in self.day_buttons.items():
+            if btn.current_state == DayButton.STATE_VACATION:
+                vacation_days.append(date_obj.strftime("%d.%m.%Y"))
+            elif btn.current_state == DayButton.STATE_SICKNESS:
+                sickness_days.append(date_obj.strftime("%d.%m.%Y"))
+        
+        current_time_off = []
+        if vacation_days:
+            current_time_off.append({'task_name': 'Vacation', 'days': vacation_days})
+        if sickness_days:
+            current_time_off.append({'task_name': 'Sickness', 'days': sickness_days})
+            
+        # 3. Update Data Structure
+        period_key = self.selected_date.strftime("%m.%Y")
+        self.report_history[period_key] = {'time_off': current_time_off}
+        
+        data = {
+            'defaults': {
+                'excluded_tasks': excluded
+            },
+            'history': self.report_history
+        }
+        
+        # 4. Write to file
+        try:
+            self.report_settings_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(self.report_settings_path, 'w', encoding='utf-8') as f:
+                yaml.dump(data, f, sort_keys=False)
+        except Exception as e:
+            print(f"Failed to save settings: {e}")
+
     def _generate_report(self):
         """Gather config and run generation"""
         output_path = self.path_input.text()
@@ -522,7 +627,6 @@ class ReportWindow(QDialog):
             QMessageBox.warning(self, "Error", "Please select an output file.")
             return
 
-        # 1. Gather Time Off
         vacation_days = []
         sickness_days = []
         
@@ -549,15 +653,18 @@ class ReportWindow(QDialog):
         
         # 3. Create Config
         config = ReportConfiguration(
-            period=self.selected_date.strftime("%Y-%m"),
+            period=self.selected_date.strftime("%m.%Y"),
             output_path=output_path,
             time_off_configs=time_off_configs,
             excluded_tasks=excluded
         )
         
         # 4. Generate
-        self.status_label.setText("Generating...")
+        self.status_label.setText("Saving & Generating...")
         self.generate_btn.setEnabled(False)
+        
+        # Save settings for persistence
+        self._save_settings()
         
         # Run async generation synchronously
         self.loop.run_until_complete(self._run_service(config))

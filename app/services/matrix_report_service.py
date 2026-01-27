@@ -10,8 +10,9 @@ import calendar
 import csv
 import logging
 from pathlib import Path
-from typing import List, Dict, Optional, Any
-from pydantic import BaseModel, Field
+from typing import List, Dict, Optional, Any, Union
+from pydantic import BaseModel, Field, BeforeValidator
+from typing_extensions import Annotated
 
 from app.domain.models import Task, TimeEntry
 from app.infra.repository import TaskRepository, TimeEntryRepository
@@ -19,10 +20,20 @@ from app.infra.repository import TaskRepository, TimeEntryRepository
 logger = logging.getLogger(__name__)
 
 
+def parse_german_date(v: Any) -> Any:
+    if isinstance(v, str):
+        try:
+            return datetime.datetime.strptime(v, "%d.%m.%Y").date()
+        except ValueError:
+            pass # Try default Pydantic parsing
+    return v
+
+GermanDate = Annotated[datetime.date, BeforeValidator(parse_german_date)]
+
 class TimeOffConfig(BaseModel):
     """Configuration for time off (vacation, sickness, etc)."""
     task_name: str = Field(..., description="Name of the task to log time against")
-    days: List[datetime.date] = Field(default_factory=list, description="List of dates")
+    days: List[GermanDate] = Field(default_factory=list, description="List of dates")
     daily_hours: float = Field(default=8.0, description="Hours to attribute per day")
 
 
@@ -31,7 +42,7 @@ class ReportConfiguration(BaseModel):
     Configuration for a matrix report.
     Usually loaded from a YAML file.
     """
-    period: str = Field(..., description="Year-Month in format YYYY-MM")
+    period: str = Field(..., description="Year-Month in format YYYY-MM or MM.YYYY")
     output_path: Optional[str] = Field(None, description="Path to save the generated CSV")
     
     time_off_configs: List[TimeOffConfig] = Field(
@@ -68,13 +79,19 @@ class ReportConfiguration(BaseModel):
     @property
     def start_date(self) -> datetime.date:
         """Derive start date from period string."""
-        year, month = map(int, self.period.split('-'))
+        if "." in self.period:
+            month, year = map(int, self.period.split('.'))
+        else:
+            year, month = map(int, self.period.split('-'))
         return datetime.date(year, month, 1)
 
     @property
     def end_date(self) -> datetime.date:
         """Derive end date from period string."""
-        year, month = map(int, self.period.split('-'))
+        if "." in self.period:
+            month, year = map(int, self.period.split('.'))
+        else:
+            year, month = map(int, self.period.split('-'))
         _, last_day = calendar.monthrange(year, month)
         return datetime.date(year, month, last_day)
     
@@ -157,14 +174,9 @@ class MatrixReportService:
         dates = config.date_range
         header = ["Task name"] + config.user_columns + ["Total hours"]
         
-        # Date headers: "Do, 1. Jan 26"
-        # We'll use a standard format for now, or try to match the user's example
-        # User example: "Do, 1. Jan 26" -> German DayName, Day. Month Year
-        # We will use simple %a %d. %b %y for now, or English if system locale.
-        # Let's stick to %Y-%m-%d for simplicity/machine reading unless specifically asked, 
-        # BUT user asked for "Exceptional UX" and "example.csv" has formatted dates.
-        # Let's try to mimic the nice format.
-        date_headers = [d.strftime("%a, %d. %b %y") for d in dates]
+        # Date headers: "Do, 01. Jan 26"
+        # German formatting: Weekday (2 char), Day. Month (3 char) Year (2 char)
+        date_headers = [self._format_german_date(d) for d in dates]
         header.extend(date_headers)
         
         writer.writerow(header)
@@ -249,5 +261,22 @@ class MatrixReportService:
         writer.writerow(total_row)
 
         return output.getvalue()
+
+
+    def _format_german_date(self, date_obj: datetime.date) -> str:
+        """
+        Format date as 'Do, 01. Jan 26' (German weekday, day, month, year)
+        without relying on system locale.
+        """
+        weekdays = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
+        months = ["", "Jan", "Feb", "Mär", "Apr", "Mai", "Jun", 
+                  "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"]
+        
+        wd = weekdays[date_obj.weekday()]
+        day = f"{date_obj.day:02d}"
+        month = months[date_obj.month]
+        year = date_obj.strftime("%y") # 2 digit year
+        
+        return f"{wd}, {day}. {month} {year}"
 
 import io
