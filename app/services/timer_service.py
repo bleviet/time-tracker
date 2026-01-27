@@ -5,6 +5,7 @@ Architecture Decision: Observer Pattern (Qt Signals)
 The service emits signals when state changes, keeping it decoupled from UI.
 """
 
+import asyncio
 import datetime
 from typing import Optional
 from PySide6.QtCore import QObject, QTimer, Signal
@@ -37,6 +38,7 @@ class TimerService(QObject):
         self.session_initial_seconds: int = 0
         
         self.last_tick_time = datetime.datetime.now()
+        self.last_save_time = datetime.datetime.now() # For auto-save
         self.is_paused = False
         
         # Internal timer that fires every second
@@ -80,6 +82,7 @@ class TimerService(QObject):
         self.session_start_time = datetime.datetime.now()
         self.session_initial_seconds = 0
         self.last_tick_time = self.session_start_time
+        self.last_save_time = self.session_start_time
         self.is_paused = False
         self.timer.start(1000)  # 1000ms = 1 second
         
@@ -118,6 +121,13 @@ class TimerService(QObject):
         self.timer.stop()
         self.is_paused = True
         
+        # Force a save when pausing
+        if self.current_entry:
+             # We can't await here easily, but we should try to save state.
+             # Since pause originates from UI or event, maybe we can assume loop is running?
+             # For now, let the loop/system monitor handle the call wrapper, or launch a task.
+             asyncio.create_task(self._background_save())
+        
         if self.active_task:
             self.task_paused.emit(self.active_task.id)
     
@@ -134,6 +144,7 @@ class TimerService(QObject):
             self.session_initial_seconds = self.current_entry.duration_seconds
             
         self.last_tick_time = self.session_start_time
+        self.last_save_time = self.session_start_time
         self.is_paused = False
         self.timer.start(1000)
         
@@ -169,13 +180,21 @@ class TimerService(QObject):
         self.current_entry.was_interrupted = True
         self.current_entry.interruption_handled = True
         await self.entry_repo.update(self.current_entry)
+        
+    async def _background_save(self):
+        """Persist current entry state to DB"""
+        if self.current_entry:
+            try:
+                # We only update duration, keeping end_time as None (active)
+                await self.entry_repo.update(self.current_entry)
+            except Exception as e:
+                print(f"Auto-save failed: {e}")
     
     def _on_tick(self):
         """Called every second to update the timer"""
         if not self.active_task or not self.current_entry:
             return
         
-        now = datetime.datetime.now()
         now = datetime.datetime.now()
         
         # Calculate duration based on start time (drift-proof)
@@ -192,6 +211,14 @@ class TimerService(QObject):
         time_str = f"{self.active_task.name}: {hours:02d}:{minutes:02d}:{seconds:02d}"
         
         self.tick.emit(time_str, total_seconds)
+        
+        # Auto-Save Logic
+        if (now - self.last_save_time).total_seconds() >= 60:
+            self.last_save_time = now
+            # Fire and forget background save
+            # Note: This requires an active event loop. QTimer runs in the main thread 
+            # where asyncio loop should be available (SystemTrayApp sets it up).
+            asyncio.create_task(self._background_save())
     
     async def get_active_task(self) -> Optional[Task]:
         """Get the currently active task"""
