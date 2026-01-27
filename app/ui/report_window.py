@@ -29,6 +29,7 @@ from app.infra.repository import TaskRepository
 from app.services.matrix_report_service import (
     MatrixReportService, ReportConfiguration, TimeOffConfig
 )
+from app.services.report_service import ReportService
 from app.infra.config import get_settings
 
 
@@ -349,6 +350,16 @@ class ReportWindow(QDialog):
     def _setup_config_tab(self):
         layout = QVBoxLayout(self.config_tab)
         
+        # Template Selection
+        tmpl_grp = QGroupBox("Report Type")
+        tmpl_layout = QHBoxLayout()
+        self.template_combo = QComboBox()
+        self.template_combo.addItems(["Matrix Report", "Detailed CSV (Accounting)"])
+        tmpl_layout.addWidget(QLabel("Template:"))
+        tmpl_layout.addWidget(self.template_combo)
+        tmpl_grp.setLayout(tmpl_layout)
+        layout.addWidget(tmpl_grp)
+
         # Output File
         file_grp = QGroupBox("Output Settings")
         file_layout = QHBoxLayout()
@@ -671,10 +682,17 @@ class ReportWindow(QDialog):
         
     async def _run_service(self, config: ReportConfiguration):
         try:
-            service = MatrixReportService()
-            content = await service.generate_report(config)
+            template_type = self.template_combo.currentText()
             
-            # Save file
+            if template_type == "Detailed CSV (Accounting)":
+                from app.services.accounting_matrix_service import AccountingMatrixService
+                service = AccountingMatrixService()
+                content = await service.generate_report(config)
+            else:
+                # Default Matrix Report
+                service = MatrixReportService()
+                content = await service.generate_report(config)
+            
             path = Path(config.output_path)
             path.parent.mkdir(parents=True, exist_ok=True)
             with open(path, 'w', encoding='utf-8') as f:

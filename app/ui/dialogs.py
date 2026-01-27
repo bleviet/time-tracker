@@ -3,15 +3,17 @@ Dialogs for handling interruptions and manual entry.
 """
 
 from typing import List, Optional
+import asyncio
 from datetime import datetime
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QLabel, QPushButton, QHBoxLayout, 
     QComboBox, QDateEdit, QTimeEdit, QTextEdit, QFormLayout, 
-    QDialogButtonBox, QMessageBox
+    QDialogButtonBox, QMessageBox, QLineEdit
 )
 from PySide6.QtCore import Qt, QDate, QTime
 
-from app.domain.models import Task, TimeEntry
+from app.domain.models import Task, TimeEntry, Accounting
+from app.infra.repository import AccountingRepository
 
 
 class InterruptionDialog(QDialog):
@@ -61,6 +63,65 @@ class InterruptionDialog(QDialog):
         """Set the user's choice and close dialog"""
         self.choice = choice
         self.accept()
+
+
+class TaskEditDialog(QDialog):
+    """
+    Dialog to edit a task (e.g., assign accounting).
+    """
+    def __init__(self, task: Task, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Edit Task")
+        self.task = task
+        self.repo = AccountingRepository()
+        self.loop = asyncio.get_event_loop()
+        self.accounting_profiles: List[Accounting] = []
+        
+        self._setup_ui()
+        self._load_data()
+        
+    def _setup_ui(self):
+        layout = QVBoxLayout(self)
+        form = QFormLayout()
+        
+        self.name_edit = QLineEdit(self.task.name)
+        form.addRow("Name:", self.name_edit)
+        
+        self.accounting_combo = QComboBox()
+        self.accounting_combo.addItem("None", None)
+        form.addRow("Accounting:", self.accounting_combo)
+        
+        layout.addLayout(form)
+        
+        # Buttons
+        btns = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        btns.accepted.connect(self._save)
+        btns.rejected.connect(self.reject)
+        layout.addWidget(btns)
+        
+    def _load_data(self):
+        try:
+            self.accounting_profiles = self.loop.run_until_complete(self.repo.get_all_active())
+            self.accounting_combo.clear()
+            self.accounting_combo.addItem("None", None)
+            
+            idx_to_select = 0
+            for i, acc in enumerate(self.accounting_profiles):
+                self.accounting_combo.addItem(acc.name, acc.id)
+                if self.task.accounting_id == acc.id:
+                    idx_to_select = i + 1
+            
+            self.accounting_combo.setCurrentIndex(idx_to_select)
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to load accounting profiles: {e}")
+            
+    def _save(self):
+        self.task.name = self.name_edit.text().strip()
+        self.task.accounting_id = self.accounting_combo.currentData()
+        self.accept()
+        
+    def get_data(self) -> Task:
+        return self.task
 
 
 class ManualEntryDialog(QDialog):

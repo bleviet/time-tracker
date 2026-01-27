@@ -7,8 +7,24 @@ from JSON config files or database. It also provides easy serialization/deserial
 """
 
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field, ConfigDict
+
+
+class Accounting(BaseModel):
+    """
+    Represents an accounting profile/cost object.
+    
+    Attributes are dynamic based on UserPreferences.accounting_columns.
+    Example: {"Cost Center": "100", "Project": "A-1"}
+    """
+    model_config = ConfigDict(from_attributes=True)
+    
+    id: Optional[int] = None
+    name: str = Field(..., min_length=1, max_length=100)
+    attributes: Dict[str, str] = Field(default_factory=dict)
+    is_active: bool = True
+    created_at: datetime = Field(default_factory=datetime.now)
 
 
 class Task(BaseModel):
@@ -23,6 +39,10 @@ class Task(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
     description: Optional[str] = None
     is_active: bool = True
+    
+    # Link to Accounting Profile
+    accounting_id: Optional[int] = None
+    
     created_at: datetime = Field(default_factory=datetime.now)
     archived_at: Optional[datetime] = None
     
@@ -67,6 +87,12 @@ class UserPreferences(BaseModel):
     german_state: str = Field(default="BY", description="Two-letter German state code")
     respect_holidays: bool = Field(default=True, description="Disable tracking on holidays")
     respect_weekends: bool = Field(default=True, description="Disable tracking on weekends")
+    
+    # Accounting Settings
+    accounting_columns: List[str] = Field(
+        default_factory=list, 
+        description="User-defined columns for accounting profiles (e.g. ['Cost Center', 'GL Account'])"
+    )
     
     # Auto-pause settings
     auto_pause_on_lock: bool = Field(default=True, description="Pause when screen locks")

@@ -23,6 +23,13 @@ excluded_tasks:
 
 # Optional: Define extra empty columns for your template
 user_columns:
-  - "Project Code"
-  - "Billable?"
-  - "Random"
+  - "User Column 1"
+  - "User Column 2"
+  - "User Column 3"
+  - "User Column 4"
+  - "User Column 5"
+  - "User Column 6"
+  - "User Column 7"
+  - "User Column 8"
+  - "User Column 9"
+

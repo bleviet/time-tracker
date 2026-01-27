@@ -1,0 +1,7 @@
+Accounting Profile{% for col in accounting_columns %},{{ col }}{% endfor %},Task,Start Date,Duration,Hours,Notes{{ "\n" -}}
+{% for item in tasks -%}
+{% for entry in item.entries -%}
+"{{ item.accounting_name }}"{% for col in accounting_columns %},"{{ item.accounting_attributes.get(col, '') }}"{% endfor %},"{{ item.task.name }}","{{ entry.start_time|format_date }}","{{ entry.duration_seconds|format_duration }}","{{ (entry.duration_seconds/3600)|round(2) }}","{{ entry.notes or '' }}"{{ "\n" -}}
+{% endfor -%}
+{% endfor -%}
+Total,,,,,,{{ total_hours|round(2) }}

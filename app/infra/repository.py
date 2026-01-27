@@ -10,13 +10,123 @@ Separates data access logic from business logic. Makes it easy to:
 """
 
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Dict
+import json
+from pathlib import Path
+
 from sqlalchemy import select, update, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.domain.models import Task, TimeEntry
-from app.infra.db import TaskModel, TimeEntryModel, get_engine
+from app.domain.models import Task, TimeEntry, Accounting, UserPreferences
+from app.infra.db import TaskModel, TimeEntryModel, AccountingModel, get_engine, DatabaseEngine
 
+
+class UserRepository:
+    """
+    Handles User Preferences persistence (JSON file based).
+    """
+    
+    def __init__(self):
+        # Locate prefs file near the DB
+        # This is a bit of a hack to get the path, but ensures it's in the data dir
+        engine = DatabaseEngine.get_instance()
+        # Parse path from URL string "sqlite+aiosqlite:///<path>"
+        url = str(engine.engine.url)
+        if "sqlite" in url:
+            db_path = url.split("///")[-1]
+            self.prefs_path = Path(db_path).parent / "user_prefs.json"
+        else:
+            self.prefs_path = Path("user_prefs.json") # Fallback
+
+    async def get_preferences(self) -> UserPreferences:
+        """Get current user preferences"""
+        if not self.prefs_path.exists():
+            return UserPreferences()
+        
+        try:
+            with open(self.prefs_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            return UserPreferences(**data)
+        except Exception as e:
+            print(f"Error loading prefs: {e}")
+            return UserPreferences()
+
+    async def update_preferences(self, prefs: UserPreferences) -> None:
+        """Update user preferences"""
+        try:
+            self.prefs_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(self.prefs_path, 'w', encoding='utf-8') as f:
+                json.dump(prefs.model_dump(), f, indent=2)
+        except Exception as e:
+            print(f"Error saving prefs: {e}")
+
+
+
+class AccountingRepository:
+    """
+    Handles Accounting-related database operations.
+    """
+    
+    def __init__(self, session: Optional[AsyncSession] = None):
+        self.session = session
+    
+    async def _get_session(self) -> AsyncSession:
+        if self.session:
+            return self.session
+        engine = get_engine()
+        return engine.get_session()
+        
+    async def get_all_active(self) -> List[Accounting]:
+        """Get all active accounting profiles"""
+        session = await self._get_session()
+        async with session:
+            result = await session.execute(
+                select(AccountingModel).where(AccountingModel.is_active == True)
+            )
+            models = result.scalars().all()
+            return [Accounting.model_validate(m) for m in models]
+
+    async def create(self, accounting: Accounting) -> Accounting:
+        """Create a new accounting profile"""
+        session = await self._get_session()
+        async with session:
+            model = AccountingModel(
+                name=accounting.name,
+                attributes=accounting.attributes,
+                is_active=accounting.is_active,
+                created_at=accounting.created_at
+            )
+            session.add(model)
+            await session.commit()
+            await session.refresh(model)
+            return Accounting.model_validate(model)
+            
+    async def delete(self, id: int) -> None:
+        """Soft delete an accounting profile"""
+        session = await self._get_session()
+        async with session:
+            await session.execute(
+                update(AccountingModel)
+                .where(AccountingModel.id == id)
+                .values(is_active=False)
+            )
+            await session.commit()
+            
+    async def update(self, accounting: Accounting) -> Accounting:
+        """Update an existing accounting profile"""
+        session = await self._get_session()
+        async with session:
+            await session.execute(
+                update(AccountingModel)
+                .where(AccountingModel.id == accounting.id)
+                .values(
+                    name=accounting.name,
+                    attributes=accounting.attributes,
+                    is_active=accounting.is_active
+                )
+            )
+            await session.commit()
+            return accounting
 
 class TaskRepository:
     """
@@ -63,6 +173,7 @@ class TaskRepository:
                 name=task.name,
                 description=task.description,
                 is_active=task.is_active,
+                accounting_id=task.accounting_id,
                 created_at=task.created_at
             )
             session.add(task_model)
@@ -81,6 +192,7 @@ class TaskRepository:
                     name=task.name,
                     description=task.description,
                     is_active=task.is_active,
+                    accounting_id=task.accounting_id,
                     archived_at=task.archived_at
                 )
             )

@@ -12,6 +12,8 @@ from PySide6.QtGui import QColor, QPalette, QAction
 from app.domain.models import Task, TimeEntry
 from app.infra.repository import TaskRepository, TimeEntryRepository
 from app.ui.dialogs import ManualEntryDialog
+from app.ui.accounting_dialogs import AccountingManagementDialog
+from app.ui.task_dialogs import TaskManagementDialog
 
 
 class HistoryWindow(QWidget):
@@ -239,6 +241,23 @@ class HistoryWindow(QWidget):
         
         # Buttons
         btn_layout = QHBoxLayout()
+        
+        self.accounting_btn = QPushButton("Manage Accounting")
+        self.accounting_btn.clicked.connect(self._open_accounting)
+        self.accounting_btn.setStyleSheet("""
+            QPushButton {
+                 background-color: #f5f5f5;
+                 color: #333;
+                 border: 1px solid #ccc;
+                 border-radius: 6px;
+                 padding: 10px 20px;
+                 font-size: 14px;
+            }
+            QPushButton:hover {
+                background-color: #e0e0e0;
+            }
+        """)
+        
         self.add_btn = QPushButton("+ Add Manual Entry")
         self.add_btn.clicked.connect(self._open_manual_entry)
         self.add_btn.setCursor(Qt.PointingHandCursor)
@@ -259,11 +278,42 @@ class HistoryWindow(QWidget):
                 background-color: #0d47a1;
             }
         """)
+        
+        self.tasks_btn = QPushButton("Manage Tasks")
+        self.tasks_btn.clicked.connect(self._open_tasks)
+        self.tasks_btn.setStyleSheet("""
+            QPushButton {
+                 background-color: #f5f5f5;
+                 color: #333;
+                 border: 1px solid #ccc;
+                 border-radius: 6px;
+                 padding: 10px 20px;
+                 font-size: 14px;
+            }
+            QPushButton:hover {
+                background-color: #e0e0e0;
+            }
+        """)
+        
+        btn_layout.addWidget(self.accounting_btn)
+        btn_layout.addWidget(self.tasks_btn)
         btn_layout.addStretch()
         btn_layout.addWidget(self.add_btn)
         
         right_layout.addLayout(btn_layout)
         layout.addLayout(right_layout, stretch=3) # Make right side wider
+
+    def _open_accounting(self):
+        """Open accounting management dialog"""
+        dialog = AccountingManagementDialog(self)
+        dialog.exec()
+        
+    def _open_tasks(self):
+        """Open task management dialog"""
+        dialog = TaskManagementDialog(self)
+        if dialog.exec():
+            # Refresh tasks if needed (e.g. if names changed)
+            self._load_tasks()
         
     def _show_context_menu(self, pos):
         """Show context menu for table"""

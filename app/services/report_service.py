@@ -11,7 +11,7 @@ from typing import Dict, List, Optional
 from jinja2 import Environment, FileSystemLoader, Template
 
 from app.domain.models import Task, TimeEntry
-from app.infra.repository import TaskRepository, TimeEntryRepository
+from app.infra.repository import TaskRepository, TimeEntryRepository, UserRepository, AccountingRepository
 from app.utils import get_resource_path
 
 
@@ -28,7 +28,7 @@ class ReportService:
             template_dir: Directory containing Jinja2 templates
         """
         if template_dir is None:
-            template_dir = get_resource_path("templates")
+            template_dir = get_resource_path("app/resources/templates")
         
         self.template_dir = template_dir
         self.template_dir.mkdir(parents=True, exist_ok=True)
@@ -75,8 +75,13 @@ class ReportService:
         # Fetch data
         task_repo = TaskRepository()
         entry_repo = TimeEntryRepository()
+        user_repo = UserRepository()
+        acc_repo = AccountingRepository()
         
         tasks = await task_repo.get_all_active()
+        prefs = await user_repo.get_preferences()
+        accounting_profiles = await acc_repo.get_all_active()
+        acc_map = {acc.id: acc for acc in accounting_profiles}
         
         # Aggregate data by task
         report_data = []
@@ -92,12 +97,22 @@ class ReportService:
             task_seconds = sum(e.duration_seconds for e in entries)
             total_seconds += task_seconds
             
+            # Get Accounting Info
+            acc_name = ""
+            acc_attrs = {}
+            if task.accounting_id in acc_map:
+                acc = acc_map[task.accounting_id]
+                acc_name = acc.name
+                acc_attrs = acc.attributes
+            
             if task_seconds > 0:  # Only include tasks with time
                 report_data.append({
                     'task': task,
                     'entries': entries,
                     'total_seconds': task_seconds,
-                    'total_hours': task_seconds / 3600
+                    'total_hours': task_seconds / 3600,
+                    'accounting_name': acc_name,
+                    'accounting_attributes': acc_attrs
                 })
         
         # Prepare template context
@@ -107,7 +122,8 @@ class ReportService:
             'tasks': report_data,
             'total_seconds': total_seconds,
             'total_hours': total_seconds / 3600,
-            'generated_at': datetime.datetime.now()
+            'generated_at': datetime.datetime.now(),
+            'accounting_columns': prefs.accounting_columns
         }
         
         # Render template

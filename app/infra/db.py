@@ -9,17 +9,30 @@ Architecture Decision: Why SQLAlchemy?
 
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Dict, Any
 import os
 
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy import String, Integer, DateTime, Boolean, Text, ForeignKey
+from sqlalchemy.types import JSON
+from sqlalchemy import text
 
 
 # Base class for all models
 class Base(DeclarativeBase):
     pass
+
+
+class AccountingModel(Base):
+    """SQLAlchemy model for Accounting/Cost Object entity"""
+    __tablename__ = "accounting"
+    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    attributes: Mapped[Dict[str, str]] = mapped_column(JSON, default=dict, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, nullable=False)
 
 
 class TaskModel(Base):
@@ -30,6 +43,10 @@ class TaskModel(Base):
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    
+    # Link to accounting
+    accounting_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("accounting.id"), nullable=True)
+    
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, nullable=False)
     archived_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
@@ -100,6 +117,14 @@ def get_engine(db_url: Optional[str] = None) -> DatabaseEngine:
 
 
 async def init_db(db_url: Optional[str] = None):
-    """Initialize the database (create tables)"""
+    """Initialize the database (create tables and migrate schema)"""
     engine = get_engine(db_url)
     await engine.create_tables()
+    
+    # Simple migration for Accounting Feature (v2)
+    async with engine.engine.connect() as conn:
+        try:
+            await conn.execute(text("ALTER TABLE tasks ADD COLUMN accounting_id INTEGER REFERENCES accounting(id)"))
+            await conn.commit()
+        except Exception:
+            pass
