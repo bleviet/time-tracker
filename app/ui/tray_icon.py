@@ -24,6 +24,7 @@ from app.domain.models import Task
 from .dialogs import InterruptionDialog
 from .main_window import MainWindow
 from .report_window import ReportWindow
+from .history_window import HistoryWindow
 from app.utils import get_resource_path
 
 
@@ -61,8 +62,9 @@ class SystemTrayApp:
         # Tasks cache (initialize early)
         self.tasks = []
         
-        # Main Window (will be shown after initialization)
+        # Windows
         self.main_window = None
+        self.history_window = None
         
         # Connect signals
         self._connect_signals()
@@ -126,6 +128,7 @@ class SystemTrayApp:
             # Create and show main window
             self.main_window = MainWindow(self.timer, self.tasks)
             self.main_window.closed.connect(self._on_main_window_closed)
+            self.main_window.show_history.connect(self._show_history_window)
             self.main_window.show()
             
             # Setup global shortcut to show window (Ctrl+Shift+T)
@@ -186,6 +189,11 @@ class SystemTrayApp:
         menu.addAction(stop_action)
         
         menu.addSeparator()
+
+        # View History
+        history_action = QAction("History & Manual Entry...", self.app)
+        history_action.triggered.connect(self._show_history_window)
+        menu.addAction(history_action)
         
         # Generate Report
         report_action = QAction("Generate Report...", self.app)
@@ -200,6 +208,13 @@ class SystemTrayApp:
         menu.addAction(quit_action)
         
         self.tray_icon.setContextMenu(menu)
+    
+    def _show_history_window(self):
+        """Show the history window"""
+        if not self.history_window:
+            self.history_window = HistoryWindow(self.loop)
+        self.history_window.show()
+        self.history_window.activateWindow()
     
     def _start_task_sync(self, task_id: int):
         """Synchronous wrapper for starting a task"""

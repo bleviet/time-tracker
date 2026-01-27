@@ -1,11 +1,17 @@
 """
-Dialog for handling interruptions (lock/unlock events).
-
-Asks the user if time during absence should be tracked or ignored.
+Dialogs for handling interruptions and manual entry.
 """
 
-from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel, QPushButton, QHBoxLayout
-from PySide6.QtCore import Qt
+from typing import List, Optional
+from datetime import datetime
+from PySide6.QtWidgets import (
+    QDialog, QVBoxLayout, QLabel, QPushButton, QHBoxLayout, 
+    QComboBox, QDateEdit, QTimeEdit, QTextEdit, QFormLayout, 
+    QDialogButtonBox, QMessageBox
+)
+from PySide6.QtCore import Qt, QDate, QTime
+
+from app.domain.models import Task
 
 
 class InterruptionDialog(QDialog):
@@ -55,3 +61,88 @@ class InterruptionDialog(QDialog):
         """Set the user's choice and close dialog"""
         self.choice = choice
         self.accept()
+
+
+class ManualEntryDialog(QDialog):
+    """
+    Dialog for manually adding a past time entry.
+    """
+    
+    def __init__(self, tasks: List[Task], parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Add Manual Entry")
+        self.tasks = tasks
+        self.setModal(True)
+        self.setMinimumWidth(400)
+        
+        self._setup_ui()
+    
+    def _setup_ui(self):
+        layout = QVBoxLayout(self)
+        form_layout = QFormLayout()
+        
+        # Task Selection
+        self.task_combo = QComboBox()
+        self.task_combo.setEditable(True)  # Allow creating new tasks
+        for task in self.tasks:
+            self.task_combo.addItem(task.name, task.id)
+        form_layout.addRow("Task:", self.task_combo)
+        
+        # Date
+        self.date_edit = QDateEdit(QDate.currentDate())
+        self.date_edit.setCalendarPopup(True)
+        form_layout.addRow("Date:", self.date_edit)
+        
+        # Start Time
+        self.start_time = QTimeEdit(QTime.currentTime().addSecs(-3600)) # Default 1 hr ago
+        form_layout.addRow("Start Time:", self.start_time)
+        
+        # End Time
+        self.end_time = QTimeEdit(QTime.currentTime())
+        form_layout.addRow("End Time:", self.end_time)
+        
+        # Notes
+        self.notes_edit = QTextEdit()
+        self.notes_edit.setPlaceholderText("Optional notes...")
+        self.notes_edit.setMaximumHeight(80)
+        form_layout.addRow("Notes:", self.notes_edit)
+        
+        layout.addLayout(form_layout)
+        
+        # Buttons
+        button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        button_box.accepted.connect(self._validate_and_accept)
+        button_box.rejected.connect(self.reject)
+        layout.addWidget(button_box)
+    
+    def _validate_and_accept(self):
+        """Validate input before accepting"""
+        start = self.start_time.time()
+        end = self.end_time.time()
+        
+        if start >= end:
+            QMessageBox.warning(self, "Invalid Time", "End time must be after start time.")
+            return
+            
+        self.accept()
+    
+    def get_data(self):
+        """Return the entered data"""
+        task_name = self.task_combo.currentText()
+        # Check if ID is in user data, otherwise it's a new task (None)
+        task_id = self.task_combo.currentData() 
+        
+        date = self.date_edit.date().toPython()
+        start_time = self.start_time.time().toPython()
+        end_time = self.end_time.time().toPython()
+        
+        start_dt = datetime.combine(date, start_time)
+        end_dt = datetime.combine(date, end_time)
+        
+        return {
+            "task_name": task_name,
+            "task_id": task_id,
+            "start_time": start_dt,
+            "end_time": end_dt,
+            "notes": self.notes_edit.toPlainText()
+        }

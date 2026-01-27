@@ -32,6 +32,7 @@ class MainWindow(QMainWindow):
     
     # Signals
     closed = Signal()  # Emitted when window is closed
+    show_history = Signal() # Request to show history window
     
     def __init__(self, timer_service: TimerService, tasks: List[Task], parent=None):
         super().__init__(parent)
@@ -180,19 +181,6 @@ class MainWindow(QMainWindow):
             y = screen_geometry.height() - window_geometry.height() - 20
             
             self.move(x, y)
-    
-    def _position_bottom_right(self):
-        """Position window at bottom right of screen"""
-        screen = QApplication.primaryScreen()
-        if screen:
-            screen_geometry = screen.availableGeometry()
-            window_geometry = self.frameGeometry()
-            
-            # Position at bottom right with small margin
-            x = screen_geometry.width() - window_geometry.width() - 10
-            y = screen_geometry.height() - window_geometry.height() - 10
-            
-            self.move(x, y)
         
     def _connect_signals(self):
         """Connect timer service signals to UI updates"""
@@ -298,6 +286,12 @@ class MainWindow(QMainWindow):
             menu.addAction(stop_action)
             
             menu.addSeparator()
+            
+        history_action = QAction("View History", self)
+        history_action.triggered.connect(self.show_history.emit)
+        menu.addAction(history_action)
+
+        menu.addSeparator()
         
         hide_action = QAction("Hide to Tray", self)
         hide_action.triggered.connect(self.hide)

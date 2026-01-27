@@ -63,8 +63,9 @@ class TimerService(QObject):
         if not self.active_task:
             raise ValueError(f"Task {task_id} not found")
         
-        # Load cumulative time from all previous entries
-        previous_entries = await self.entry_repo.get_by_task(task_id)
+        # Load cumulative time from all previous entries for TODAY
+        start_of_day = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        previous_entries = await self.entry_repo.get_by_task(task_id, start_date=start_of_day)
         self.cumulative_seconds = sum(entry.duration_seconds for entry in previous_entries)
         
         # Create new time entry
