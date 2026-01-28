@@ -354,7 +354,7 @@ class ReportWindow(QDialog):
         tmpl_grp = QGroupBox("Report Type")
         tmpl_layout = QHBoxLayout()
         self.template_combo = QComboBox()
-        self.template_combo.addItems(["Matrix Report", "Detailed CSV (Accounting)"])
+        self.template_combo.addItems(["Monthly Report"])
         tmpl_layout.addWidget(QLabel("Template:"))
         tmpl_layout.addWidget(self.template_combo)
         tmpl_grp.setLayout(tmpl_layout)
@@ -684,14 +684,17 @@ class ReportWindow(QDialog):
         try:
             template_type = self.template_combo.currentText()
             
-            if template_type == "Detailed CSV (Accounting)":
+            # Simplified logic: Always use (or Default to) Accounting Matrix Service for "Monthly Report"
+            # as requested by user to replace "Detailed CSV" and remove "Matrix Report"
+            if template_type == "Monthly Report":
                 from app.services.accounting_matrix_service import AccountingMatrixService
                 service = AccountingMatrixService()
                 content = await service.generate_report(config)
             else:
-                # Default Matrix Report
-                service = MatrixReportService()
-                content = await service.generate_report(config)
+                # Fallback purely for safety if somehow old value persists, but simpler to just default
+                 from app.services.accounting_matrix_service import AccountingMatrixService
+                 service = AccountingMatrixService()
+                 content = await service.generate_report(config)
             
             path = Path(config.output_path)
             path.parent.mkdir(parents=True, exist_ok=True)

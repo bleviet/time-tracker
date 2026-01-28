@@ -12,7 +12,7 @@ A cross-platform time tracking application with German holiday support and autom
 - ✅ **Work Regulations** - Configurable daily targets and German ArbZG compliance
 - ✅ **Overtime Tracking** - Automatic daily/total overtime calculation in reports
 - ✅ **Auto-Save** - Periodic background saves every 60 seconds for data safety
-- ✅ **Advanced Reporting** - Matrix reports, Accounting exports, and Sick/Vacation leave management
+- ✅ **Advanced Reporting** - Monthly reports, Accounting exports, and Sick/Vacation leave management
 - ✅ **Clean Architecture** - Modular design with separation of concerns
 - ✅ **Cross-Platform** - Works on Windows, Linux, and macOS
 
@@ -147,7 +147,7 @@ The application displays a **modern, unified widget** at the **bottom right** of
 
 1. Right-click the system tray icon → "Generate Report..."
 2. **The Report Wizard** opens:
-   - **Configuration**: Select Report Type (Matrix Report or Accounting CSV) and Month/Year.
+   - **Configuration**: Select Report Type (Monthly Report) and Month/Year.
    - **Time Off Manager**: Click days in the calendar to mark them as **Vacation** (Green) or **Sickness** (Red).
    - **Exclusions**: Uncheck tasks (like "Lunch" or "Break") to exclude them from the "Total Work" calculation.
 3. Click **Generate Report**. Your settings for Time Off and Exclusions are **automatically saved** for next time.
