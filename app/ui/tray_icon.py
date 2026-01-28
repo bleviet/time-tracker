@@ -195,18 +195,6 @@ class SystemTrayApp:
         show_action.triggered.connect(self._show_main_window)
         menu.addAction(show_action)
         
-        menu.addSeparator()
-        
-        # Task Selection Submenu (quick access)
-        if self.tasks:
-            task_menu = menu.addMenu("Quick Start Task")
-            for task in self.tasks[:5]:  # Show top 5 tasks
-                action = QAction(task.name, self.app)
-                action.triggered.connect(
-                    lambda checked, t=task: self._start_task_sync(t.id)
-                )
-                task_menu.addAction(action)
-        
         # Stop Action
         stop_action = QAction("Stop Tracking", self.app)
         stop_action.triggered.connect(self._stop_task_sync)
