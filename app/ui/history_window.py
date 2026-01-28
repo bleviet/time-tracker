@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (
     QAbstractItemView
 )
 from PySide6.QtCore import Qt, QDate, Signal, QRect, QEvent
-from PySide6.QtGui import QColor, QPalette, QAction, QPainter, QTextCharFormat
+from PySide6.QtGui import QColor, QPalette, QAction, QPainter, QTextCharFormat, QKeySequence, QShortcut
 
 from app.domain.models import Task, TimeEntry
 from app.infra.repository import TaskRepository, TimeEntryRepository
@@ -45,7 +45,9 @@ class StatusCalendarWidget(QCalendarWidget):
 
         # Install event filter on the internal table view to catch right-clicks
         # QCalendarWidget uses an internal QTableView to display the calendar
-        self.findChild(QAbstractItemView).viewport().installEventFilter(self)
+        view = self.findChild(QAbstractItemView)
+        if view:
+            view.viewport().installEventFilter(self)
 
     def eventFilter(self, obj, event):
         """Filter events to catch right-clicks on calendar cells"""
@@ -78,8 +80,6 @@ class StatusCalendarWidget(QCalendarWidget):
                     if target_date and target_date.isValid():
                         self.dateContextRequested.emit(target_date)
                     return True  # Event handled
-
-        return super().eventFilter(obj, event)
 
         return super().eventFilter(obj, event)
 
@@ -249,12 +249,16 @@ class HistoryWindow(QWidget):
         self.entry_repo = TimeEntryRepository()
         self.task_repo = TaskRepository()
         self.settings = get_settings()
+        self.undo_stack = []
 
         self.tasks: List[Task] = []
         self.current_entries: List[TimeEntry] = []
 
         self._setup_ui()
         self._load_tasks()
+
+        self.undo_shortcut = QShortcut(QKeySequence("Ctrl+Z"), self)
+        self.undo_shortcut.activated.connect(self._undo_last_change)
 
     def _setup_ui(self):
         layout = QHBoxLayout(self)
@@ -570,6 +574,45 @@ class HistoryWindow(QWidget):
             self._apply_status_cycle(date_start, date_end, current_status, next_status)
         )
 
+    def _undo_last_change(self):
+        """Undo last day status change (Ctrl+Z)."""
+        if not self.undo_stack:
+            return
+
+        snapshot = self.undo_stack.pop()
+        self.loop.run_until_complete(self._restore_entries(snapshot))
+
+    async def _restore_entries(self, snapshot):
+        """Restore entries from snapshot."""
+        start = snapshot["start"]
+        end = snapshot["end"]
+        entries = snapshot["entries"]
+
+        try:
+            existing = []
+            if hasattr(self.entry_repo, "get_all_in_range"):
+                existing = await self.entry_repo.get_all_in_range(start, end)
+            else:
+                for task in self.tasks:
+                    existing.extend(await self.entry_repo.get_overlapping(task.id, start, end))
+            for entry in existing:
+                await self.entry_repo.delete(entry.id)
+
+            for entry in entries:
+                new_entry = TimeEntry(
+                    task_id=entry.task_id,
+                    start_time=entry.start_time,
+                    end_time=entry.end_time,
+                    duration_seconds=entry.duration_seconds,
+                    notes=entry.notes
+                )
+                await self.entry_repo.create(new_entry)
+
+            await self._refresh_month_status(start.year, start.month)
+            await self._refresh_current_date_entries()
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to undo change: {e}")
+
     async def _apply_status_cycle(self, start, end, current_status, next_status):
         """Apply the day status cycle with safety checks"""
         # Check existing entries for this day
@@ -610,6 +653,12 @@ class HistoryWindow(QWidget):
                     return
 
         try:
+            self.undo_stack.append({
+                "start": start,
+                "end": end,
+                "entries": list(all_entries)
+            })
+
             # Delete all existing entries for this day
             for entry in all_entries:
                 await self.entry_repo.delete(entry.id)
