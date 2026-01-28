@@ -79,6 +79,8 @@ This layer is the PySide6 application.
 
 * **System Tray Icon:** The main entry point.
 * **MainWindow:** For editing tasks and settings.
+* **HistoryWindow:** For viewing daily logs, editing entries, and manually adding time.
+* **ReportWindow:** Wizard for configuring and generating Matrix/Accounting reports.
 * **Correction Dialog:** The popup that asks: *"You were away for 45 minutes. Was this a break or work?"*
 
 ---

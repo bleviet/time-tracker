@@ -9,7 +9,10 @@ A cross-platform time tracking application with German holiday support and autom
 - ✅ **German Holiday Support** - Automatically detects German holidays (configurable by state)
 - ✅ **Auto-Pause on Lock** - Pauses tracking when you lock your screen
 - ✅ **Smart Resume** - Asks if time during absence was work or break
-- ✅ **Report Generation** - Generate customizable time reports using Jinja2 templates
+- ✅ **Work Regulations** - Configurable daily targets and German ArbZG compliance
+- ✅ **Overtime Tracking** - Automatic daily/total overtime calculation in reports
+- ✅ **Auto-Save** - Periodic background saves every 60 seconds for data safety
+- ✅ **Advanced Reporting** - Matrix reports, Accounting exports, and Sick/Vacation leave management
 - ✅ **Clean Architecture** - Modular design with separation of concerns
 - ✅ **Cross-Platform** - Works on Windows, Linux, and macOS
 
@@ -22,7 +25,7 @@ See [Architecture Documentation](docs/architecture/overview.md) for details.
 
 ### Prerequisites
 
-- Python 3.12 or higher
+- Python 3.10 or higher
 - pip (Python package manager)
 
 ### Steps
@@ -67,15 +70,15 @@ The application displays a **modern, unified widget** at the **bottom right** of
 
 **Appearance:** Single rounded rectangle with semi-transparent background containing:
 
-1. **Task Name Field** (Left) - Always editable
-   - Type to start/switch tasks instantly
-   - Autocomplete suggests existing tasks
-   - Press Enter to start/switch
+1.  **Task Name Field** (Left) - Always editable
+    -   Type to start/switch tasks instantly
+    -   Autocomplete suggests existing tasks
+    -   Press Enter to start/switch
 
-2. **Timer Display** (Right) - Shows HH:MM:SS
-   - Cumulative time across all sessions
-   - Bold blue numbers
-   - Updates every second
+2.  **Timer Display** (Right) - Shows HH:MM:SS
+    -   Cumulative time across all sessions
+    -   Bold blue numbers
+    -   Updates every second
 
 **Widget Features:**
 - Modern rounded design with subtle transparency
@@ -89,15 +92,15 @@ The application displays a **modern, unified widget** at the **bottom right** of
 
 **Just type and press Enter - no buttons needed:**
 
-1. Type task name (e.g., "Development")
-2. Autocomplete suggests matches
-3. Press Enter
-4. Timer begins/continues from cumulative time
+1.  Type task name (e.g., "Development")
+2.  Autocomplete suggests matches
+3.  Press Enter
+4.  Timer begins/continues from cumulative time
 
 **To switch to another task:**
-1. Type new task name (overwrites current)
-2. Press Enter
-3. Previous task auto-stops, new task starts with its cumulative time
+1.  Type new task name (overwrites current)
+2.  Press Enter
+3.  Previous task auto-stops, new task starts with its cumulative time
 
 **Example:**
 - Type "Development" + Enter → Timer: **00:00:00** → Tracks to **00:30:00**
@@ -109,8 +112,8 @@ The application displays a **modern, unified widget** at the **bottom right** of
 ### Stopping Time Tracking
 
 **Only needed when completely done:**
-1. Right-click widget → "Stop Tracking", OR
-2. Right-click tray icon → "Stop Tracking"
+1.  Right-click widget → "Stop Tracking", OR
+2.  Right-click tray icon → "Stop Tracking"
 
 ### Widget Management
 
@@ -121,7 +124,7 @@ The application displays a **modern, unified widget** at the **bottom right** of
 - **Show Widget**: 
   - Press **Ctrl+Shift+T** (global shortcut), OR
   - Double-click tray icon, OR
-  - Right-click tray icon → "Show Main Window"
+  - Right-click → "Show Main Window"
 - **Move Widget**: Click and drag anywhere on the widget
 - **Quit**: Right-click → "Quit"
 
@@ -131,11 +134,23 @@ The application displays a **modern, unified widget** at the **bottom right** of
 - **Ctrl+Shift+T** - Show widget (works globally, even when hidden)
 - **Enter** - Start/switch task (when focused on task input)
 
+### Managing Time Entries (History)
+
+1. Right-click the system tray icon → "Show History & Log"
+2. **View Entries**: Select a date in the calendar to view that day's log.
+3. **Daily Summary**: See cumulative totals per task.
+4. **Edit/Delete**: Right-click any entry in the table to **Edit** or **Delete** it.
+   - *Note: Deleting an entry permanently removes it and recalculates the daily total.*
+5. **Manual Entry**: Click "+ Add Manual Entry" to record offline work.
+
 ### Generating Reports
 
-1. Right-click the system tray icon
-2. Select "Generate Report..."
-3. Report is generated for the current month
+1. Right-click the system tray icon → "Generate Report..."
+2. **The Report Wizard** opens:
+   - **Configuration**: Select Report Type (Matrix Report or Accounting CSV) and Month/Year.
+   - **Time Off Manager**: Click days in the calendar to mark them as **Vacation** (Green) or **Sickness** (Red).
+   - **Exclusions**: Uncheck tasks (like "Lunch" or "Break") to exclude them from the "Total Work" calculation.
+3. Click **Generate Report**. Your settings for Time Off and Exclusions are **automatically saved** for next time.
 
 ### Customizing Reports
 
