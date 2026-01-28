@@ -25,6 +25,7 @@ from .dialogs import InterruptionDialog
 from .main_window import MainWindow
 from .report_window import ReportWindow
 from .history_window import HistoryWindow
+from .settings_dialog import SettingsDialog
 from app.utils import get_resource_path
 
 
@@ -65,6 +66,7 @@ class SystemTrayApp:
         # Windows
         self.main_window = None
         self.history_window = None
+        self.settings_window = None
         
         # Connect signals
         self._connect_signals()
@@ -109,9 +111,31 @@ class SystemTrayApp:
         self.timer.task_started.connect(lambda tid: None)  # Could show notification
         self.timer.task_stopped.connect(lambda tid, secs: None)
         
+        # Notification signals
+        self.timer.target_reached.connect(self._on_target_reached)
+        self.timer.limit_reached.connect(self._on_limit_reached)
+        
         # System monitor signals
         self.system_monitor.system_locked.connect(self._on_system_locked)
         self.system_monitor.system_unlocked.connect(self._on_system_unlocked)
+    
+    def _on_target_reached(self, hours: float):
+        """Show notification when daily target is reached"""
+        self.tray_icon.showMessage(
+            "Target Reached!",
+            f"Congratulations! You have reached your daily target of {hours} hours.",
+            QSystemTrayIcon.Information,
+            10000 
+        )
+        
+    def _on_limit_reached(self, hours: float):
+        """Show warning when daily limit is reached"""
+        self.tray_icon.showMessage(
+            "Maximum Limit Reached!",
+            f"Warning: You have reached the maximum daily limit of {hours} hours.\nPlease stop working.",
+            QSystemTrayIcon.Warning,
+            15000 
+        )
     
     def _async_init(self):
         """Async initialization tasks"""
@@ -202,12 +226,26 @@ class SystemTrayApp:
         
         menu.addSeparator()
         
+        # Settings
+        settings_action = QAction("Settings...", self.app)
+        settings_action.triggered.connect(self._show_settings)
+        menu.addAction(settings_action)
+        
+        menu.addSeparator()
+        
         # Quit Action
         quit_action = QAction("Quit", self.app)
         quit_action.triggered.connect(self._quit_application)
         menu.addAction(quit_action)
         
         self.tray_icon.setContextMenu(menu)
+    
+    def _show_settings(self):
+        """Show settings dialog"""
+        if not self.settings_window:
+            self.settings_window = SettingsDialog()
+        self.settings_window.show()
+        self.settings_window.activateWindow()
     
     def _show_history_window(self):
         """Show the history window"""

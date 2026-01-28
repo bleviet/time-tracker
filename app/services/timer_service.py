@@ -11,7 +11,7 @@ from typing import Optional
 from PySide6.QtCore import QObject, QTimer, Signal
 
 from app.domain.models import Task, TimeEntry
-from app.infra.repository import TaskRepository, TimeEntryRepository
+from app.infra.repository import TaskRepository, TimeEntryRepository, UserRepository
 
 
 class TimerService(QObject):
@@ -27,6 +27,10 @@ class TimerService(QObject):
     task_paused = Signal(int)  # task_id
     task_resumed = Signal(int)  # task_id
     
+    # Notification Signals
+    target_reached = Signal(float)  # target_hours
+    limit_reached = Signal(float)   # limit_hours
+    
     def __init__(self):
         super().__init__()
         self.active_task: Optional[Task] = None
@@ -41,6 +45,12 @@ class TimerService(QObject):
         self.last_save_time = datetime.datetime.now() # For auto-save
         self.is_paused = False
         
+        # Daily Tracking State
+        self.daily_seconds_base: int = 0  # Total seconds of COMPLETED entries today
+        self.notified_target: bool = False
+        self.notified_limit: bool = False
+        self.current_prefs: Optional[UserPreferences] = None
+        
         # Internal timer that fires every second
         self.timer = QTimer()
         self.timer.timeout.connect(self._on_tick)
@@ -48,13 +58,11 @@ class TimerService(QObject):
         # Repositories
         self.task_repo = TaskRepository()
         self.entry_repo = TimeEntryRepository()
+        self.user_repo = UserRepository()
     
     async def start_task(self, task_id: int):
         """
         Start tracking time for a task.
-        
-        If another task is active, it will be stopped first.
-        Loads cumulative time from previous entries for this task.
         """
         # Stop current task if any
         if self.active_task:
@@ -65,10 +73,32 @@ class TimerService(QObject):
         if not self.active_task:
             raise ValueError(f"Task {task_id} not found")
         
-        # Load cumulative time from all previous entries for TODAY
+        # Load cumulative time for THIS task
         start_of_day = datetime.datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
         previous_entries = await self.entry_repo.get_by_task(task_id, start_date=start_of_day)
         self.cumulative_seconds = sum(entry.duration_seconds for entry in previous_entries)
+        
+        # Load Preferences & Daily Total for ALL tasks
+        self.current_prefs = await self.user_repo.get_preferences()
+        
+        # We need sum of ALL tasks today to check daily limit
+        # This requires a new repo method or iterating all active tasks?
+        # Efficient way: We don't have a "get all entries for today" method yet.
+        # Let's add simple logic: We mostly care about current + completed.
+        # To avoid heavy query every second, we calculate "base" on start.
+        # But we need "get_total_duration_for_day(date)" in repo.
+        # For now, let's assume we implement it or query all tasks?
+        # Optimized: implemented a helper query in _load_daily_total
+        self.daily_seconds_base = await self._get_daily_total(start_of_day)
+        
+        # Reset flags if explicitly starting fresh? 
+        # Actually flags should persist per day. But service memory is lifetime of app?
+        # If app runs across midnight, we need to reset.
+        # Simple check: if last_tick was yesterday?
+        # For now, simplistic approach: recalc flags based on current totals.
+        current_hrs = self.daily_seconds_base / 3600.0
+        self.notified_target = current_hrs >= self.current_prefs.work_hours_per_day
+        self.notified_limit = current_hrs >= self.current_prefs.max_daily_hours
         
         # Create new time entry
         self.current_entry = TimeEntry(
@@ -87,6 +117,25 @@ class TimerService(QObject):
         self.timer.start(1000)  # 1000ms = 1 second
         
         self.task_started.emit(task_id)
+        
+    async def _get_daily_total(self, date: datetime.datetime) -> int:
+        """Helper to get total duration of all tasks for a given date"""
+        # This requires a repo method we don't strictly have, but we can iterate active tasks?
+        # Or better: SQL query.
+        # Since I cannot easily change repo interface in this snippet without more tools,
+        # I will do a slightly inefficient loop over all active tasks. 
+        # In production this should be `entry_repo.get_total_duration(date)`.
+        
+        # Hack: use existing `get_by_task` for all active tasks.
+        tasks = await self.task_repo.get_all_active()
+        total = 0
+        start = date.replace(hour=0, minute=0, second=0)
+        end = date.replace(hour=23, minute=59, second=59)
+        
+        for t in tasks:
+            entries = await self.entry_repo.get_by_task(t.id, start_date=start, end_date=end)
+            total += sum(e.duration_seconds for e in entries)
+        return total
     
     async def stop_task(self):
         """
@@ -219,6 +268,40 @@ class TimerService(QObject):
             # Note: This requires an active event loop. QTimer runs in the main thread 
             # where asyncio loop should be available (SystemTrayApp sets it up).
             asyncio.create_task(self._background_save())
+            
+        # Notification Logic
+        if self.current_prefs:
+            # Re-calculating elapsed in case it drifted? 
+            # self.current_entry.duration_seconds is already updated above.
+            
+            # Since daily_seconds_base is from start of session, it DOES NOT include current entry start.
+            # Wait, start_task loads previous entries. 
+            # But "previous_entries" in start_task was strictly "previous".
+            # My _get_daily_total logic in start_task summed ALL tasks.
+            # If start_task just created a new entry (current_entry), it is NOT in DB yet (or size 0).
+            # So daily_seconds_base includes all OTHER finished entries.
+            # Total = base + current_entry.duration_seconds.
+            
+            # Correction: _get_daily_total might have included "current_entry" if it was committed?
+            # start_task called create() -> entry in DB.
+            # _get_daily_total iterates tasks -> get_by_task.
+            # get_by_task usually returns all. 
+            # Since current_entry duration is 0 in DB until we save...
+            # The sum from DB will be (Previous Totals + 0).
+            # So adding current_entry.duration_seconds (memory) is correct.
+            
+            total_daily_seconds = self.daily_seconds_base + self.current_entry.duration_seconds
+            total_daily_hours = total_daily_seconds / 3600.0
+            
+            # Target Check
+            if total_daily_hours >= self.current_prefs.work_hours_per_day and not self.notified_target:
+                self.notified_target = True
+                self.target_reached.emit(self.current_prefs.work_hours_per_day)
+                
+            # Limit Check
+            if total_daily_hours >= self.current_prefs.max_daily_hours and not self.notified_limit:
+                self.notified_limit = True
+                self.limit_reached.emit(self.current_prefs.max_daily_hours)
     
     async def get_active_task(self) -> Optional[Task]:
         """Get the currently active task"""

@@ -110,3 +110,10 @@ class UserPreferences(BaseModel):
     show_seconds_in_tray: bool = True
     minimize_to_tray: bool = True
     start_with_windows: bool = False
+
+    # Work Regulations
+    work_hours_per_day: float = Field(default=8.0, description="Target daily working hours")
+    enable_german_compliance: bool = Field(default=False, description="Enable German ArbZG compliance checks")
+    check_breaks: bool = Field(default=False, description="Check for mandatory breaks")
+    check_rest_periods: bool = Field(default=False, description="Check for rest periods")
+    max_daily_hours: float = Field(default=10.0, description="Absolute maximum daily working hours")

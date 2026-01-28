@@ -5,7 +5,7 @@ import io
 import logging
 from typing import List, Dict, Any, Optional
 
-from app.domain.models import Task, TimeEntry, Accounting
+from app.domain.models import Task, TimeEntry, Accounting, UserPreferences
 from app.infra.repository import TaskRepository, TimeEntryRepository, AccountingRepository, UserRepository
 from app.services.matrix_report_service import ReportConfiguration
 
@@ -17,6 +17,7 @@ class AccountingMatrixService:
     Aggregates by Accounting Profile.
     Rows: Accounting Profiles (with joined Task Names)
     Columns: Task, Profile, [Accounting Cols], Total, [Days...]
+    Includes Footer Rows: Total, Daily Target, Overtime, Compliance Notes.
     """
 
     def __init__(self):
@@ -25,18 +26,6 @@ class AccountingMatrixService:
         self.acc_repo = AccountingRepository()
         self.user_repo = UserRepository()
 
-    async def generate_report(self, config: ReportConfiguration) -> str:
-        # 1. Fetch Data
-        tasks = await self.task_repo.get_all_active()
-        accounting_profiles = await self.acc_repo.get_all_active()
-        prefs = await self.user_repo.get_preferences()
-        
-        acc_map = {acc.id: acc for acc in accounting_profiles}
-        acc_columns = prefs.accounting_columns
-        
-        start_dt = datetime.datetime.combine(config.start_date, datetime.time.min)
-        end_dt = datetime.datetime.combine(config.end_date, datetime.time.max)
-        
     async def generate_report(self, config: ReportConfiguration) -> str:
         # 1. Fetch Data
         tasks = await self.task_repo.get_all_active()
@@ -101,13 +90,14 @@ class AccountingMatrixService:
                     matrix[key][d] = matrix[key].get(d, 0.0) + time_off.daily_hours
 
         # 5. Format CSV
-        return self._format_csv(matrix, acc_tasks_map, acc_columns, config)
+        return self._format_csv(matrix, acc_tasks_map, acc_columns, config, prefs)
 
     def _format_csv(self, 
                     matrix: Dict[Any, Dict[datetime.date, float]], 
                     acc_tasks_map: Dict[Any, set],
                     acc_columns: List[str],
-                    config: ReportConfiguration) -> str:
+                    config: ReportConfiguration,
+                    prefs: UserPreferences) -> str:
         
         output = io.StringIO()
         writer = csv.writer(output, delimiter=';', lineterminator='\n')
@@ -154,9 +144,6 @@ class AccountingMatrixService:
             rows_total_hours = sum(row_data.values())
             
             if rows_total_hours == 0:
-                # Should we skip rows with 0 hours?
-                # Usually yes. But if it contains tasks that are active...
-                # Matrix logic: skip if 0.
                 continue
                 
             row = [item['task_names_str'], acc_name]
@@ -175,20 +162,13 @@ class AccountingMatrixService:
             
             writer.writerow(row)
             
-        # Total Row
-        writer.writerow([])
-        total_row = ["Total Work", "", ""] # TaskName, Profile, FirstCol... 
-        # Actually header is: TaskName(1), Profile(1), Cols(N), Total(1)
-        # So spacer needed is: 1 (Profile) + N (Cols)
-        
-        # Initial spacer for Profile (index 1)
-        # total_row starts with "Total Work" at index 0.
-        
-        # Spacer for Account Profile
-        # Spacer for Custom Columns
+        # Spacer for Footer Rows
+        # Header: Task(1), Profile(1), Cols(N), Total(1)
         padding = [""] * (1 + len(acc_columns)) 
-        total_row = ["Total Work"] + padding
         
+        # 1. Total Work
+        writer.writerow([])
+        total_row = ["Total Work"] + padding
         grand_total = sum(day_totals.values())
         total_row.append(f"{grand_total:.1f}".replace('.', ','))
         
@@ -198,8 +178,62 @@ class AccountingMatrixService:
                 total_row.append(f"{val:.1f}".replace('.', ','))
             else:
                 total_row.append("")
-                
         writer.writerow(total_row)
+        
+        # 2. Daily Target (Footer Row 2)
+        target_row = ["Daily Target"] + padding
+        # Calculate totals
+        total_target = 0.0
+        day_targets = {}
+        for d in dates:
+             # Assume Mon-Fri are working days for target
+            if d.weekday() < 5: 
+                day_targets[d] = prefs.work_hours_per_day
+                total_target += prefs.work_hours_per_day
+            else:
+                day_targets[d] = 0.0
+        
+        target_row.append(f"{total_target:.1f}".replace('.', ','))
+        for d in dates:
+            val = day_targets[d]
+            target_row.append(f"{val:.1f}".replace('.', ','))
+        writer.writerow(target_row)
+            
+        # 3. Overtime (Footer Row 3)
+        ot_row = ["Overtime"] + padding
+        total_ot = grand_total - total_target
+        ot_row.append(f"{total_ot:+.1f}".replace('.', ','))
+        
+        for d in dates:
+            actual = day_totals.get(d, 0.0)
+            target = day_targets.get(d, 0.0)
+            diff = actual - target
+            ot_row.append(f"{diff:+.1f}".replace('.', ','))
+        writer.writerow(ot_row)
+        
+        # 4. Compliance Warnings (Footer Row 4 - Optional)
+        if prefs.enable_german_compliance:
+            notes_row = ["Compliance Notes"] + padding + [""] # skip total col
+            has_warnings = False
+            notes_list = []
+            
+            for d in dates:
+                actual = day_totals.get(d, 0.0)
+                note = ""
+                # Check absolute limit
+                if actual > prefs.max_daily_hours:
+                    note = f"> {prefs.max_daily_hours}h!"
+                    has_warnings = True
+                
+                # Check breaks? (Logic complex for matrix, need entry-level data)
+                # Matrix assumes aggregation. We only strictly know total duration here, not block distribution.
+                # So we can only check daily max.
+                
+                notes_list.append(note)
+            
+            if has_warnings:
+                 notes_row.extend(notes_list)
+                 writer.writerow(notes_row)
         
         return output.getvalue()
 

@@ -5,8 +5,9 @@ from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, 
     QListWidget, QListWidgetItem, QInputDialog, QFormLayout, 
     QMessageBox, QTableWidget, QTableWidgetItem, QHeaderView,
-    QWidget, QLineEdit
+    QWidget, QLineEdit, QMenu
 )
+from PySide6.QtGui import QAction
 from PySide6.QtCore import Qt
 
 from app.domain.models import Accounting, UserPreferences
@@ -183,6 +184,11 @@ class AccountingManagementDialog(QDialog):
         self.table = QTableWidget()
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        
+        # Context Menu
+        self.table.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.table.customContextMenuRequested.connect(self._show_context_menu)
+        
         layout.addWidget(self.table)
         
         # Buttons
@@ -232,7 +238,24 @@ class AccountingManagementDialog(QDialog):
             for col_idx, col_name in enumerate(self.columns):
                 val = profile.attributes.get(col_name, "")
                 self.table.setItem(row, col_idx + 1, QTableWidgetItem(val))
-                
+    
+    def _show_context_menu(self, pos):
+        index = self.table.indexAt(pos)
+        if not index.isValid():
+            return
+            
+        menu = QMenu(self)
+        
+        edit_action = QAction("Edit", self)
+        edit_action.triggered.connect(self._edit_profile)
+        menu.addAction(edit_action)
+        
+        del_action = QAction("Delete", self)
+        del_action.triggered.connect(self._delete_profile)
+        menu.addAction(del_action)
+        
+        menu.exec(self.table.mapToGlobal(pos))
+            
     def _open_settings(self):
         dlg = AccountingSettingsDialog(self)
         if dlg.exec():

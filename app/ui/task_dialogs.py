@@ -2,8 +2,12 @@ from typing import List
 import asyncio
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QTableWidget, QTableWidgetItem, 
-    QPushButton, QHBoxLayout, QMessageBox, QHeaderView
+    QPushButton, QHBoxLayout, QMessageBox, QHeaderView,
+    QMenu
 )
+from PySide6.QtGui import QAction
+from PySide6.QtCore import Qt
+
 from app.domain.models import Task
 from app.infra.repository import TaskRepository, AccountingRepository
 from app.ui.dialogs import TaskEditDialog
@@ -22,6 +26,7 @@ class TaskManagementDialog(QDialog):
         self.acc_repo = AccountingRepository()
         
         self.tasks: List[Task] = []
+        self.acc_map = {} # Cache
         
         self._setup_ui()
         self._load_data()
@@ -34,6 +39,11 @@ class TaskManagementDialog(QDialog):
         self.table.setHorizontalHeaderLabels(["Name", "Accounting", "Active"])
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
+        
+        # Context Menu
+        self.table.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.table.customContextMenuRequested.connect(self._show_context_menu)
+        
         layout.addWidget(self.table)
         
         btn_layout = QHBoxLayout()
@@ -51,8 +61,14 @@ class TaskManagementDialog(QDialog):
         
     def _load_data(self):
         try:
+            # Load all tasks (active and archived?) 
+            # Currently repo.get_all_active() only returns active.
+            # To allow archiving/restoring, ideally we need get_all().
+            # Assuming get_all_active is what we have for now.
+            # If user wants to restore, we might need a "Show Archived" toggle later.
+            # For now, implementing "Archive" (Delete from view) logic.
+            
             self.tasks = self.loop.run_until_complete(self.repo.get_all_active())
-            # We also need accounting names
             accs = self.loop.run_until_complete(self.acc_repo.get_all_active())
             self.acc_map = {a.id: a.name for a in accs}
             
@@ -71,6 +87,23 @@ class TaskManagementDialog(QDialog):
             status = "Active" if task.is_active else "Archived"
             self.table.setItem(row, 2, QTableWidgetItem(status))
             
+    def _show_context_menu(self, pos):
+        index = self.table.indexAt(pos)
+        if not index.isValid():
+            return
+
+        menu = QMenu(self)
+        edit_action = QAction("Edit", self)
+        edit_action.triggered.connect(self._edit_task)
+        menu.addAction(edit_action)
+        
+        # Archive logic
+        archive_action = QAction("Archive", self)
+        archive_action.triggered.connect(self._archive_task)
+        menu.addAction(archive_action)
+        
+        menu.exec(self.table.mapToGlobal(pos))
+            
     def _edit_task(self):
         row = self.table.currentRow()
         if row < 0:
@@ -85,3 +118,27 @@ class TaskManagementDialog(QDialog):
                 self._load_data()
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"Failed to update task: {e}")
+
+    def _archive_task(self):
+        row = self.table.currentRow()
+        if row < 0:
+            return
+            
+        task = self.tasks[row]
+        reply = QMessageBox.question(
+            self, "Confirm Archive",
+            f"Are you sure you want to archive '{task.name}'?",
+            QMessageBox.Yes | QMessageBox.No
+        )
+        if reply == QMessageBox.Yes:
+            try:
+                # We don't have explicit archive method yet, update is_active?
+                # or delete? Repo delete is soft delete?
+                # Usually delete() in simple repos is DELETE.
+                # Standard practice: Let's assume delete for now or implement archive logic.
+                # Model has is_active field.
+                task.is_active = False
+                self.loop.run_until_complete(self.repo.update(task))
+                self._load_data()
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"Failed to archive task: {e}")
