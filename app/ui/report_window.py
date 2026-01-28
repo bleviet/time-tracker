@@ -173,7 +173,7 @@ class ReportWindow(QDialog):
 
         # State
         self.selected_date = datetime.date.today().replace(day=1)
-        self.excluded_tasks_checks: Dict[str, QCheckBox] = {}
+
 
         # UI Setup
         self._setup_ui()
@@ -226,11 +226,6 @@ class ReportWindow(QDialog):
         self.config_tab = QWidget()
         self._setup_config_tab()
         self.tabs.addTab(self.config_tab, "Configuration")
-
-        # Tab 2: Exclusions
-        self.exclusions_tab = QWidget()
-        self._setup_exclusions_tab()
-        self.tabs.addTab(self.exclusions_tab, "Task Exclusions")
 
         # --- Footer ---
         footer_layout = QHBoxLayout()
@@ -290,18 +285,6 @@ class ReportWindow(QDialog):
 
         layout.addWidget(file_grp)
         layout.addStretch()
-
-    def _setup_exclusions_tab(self):
-        layout = QVBoxLayout(self.exclusions_tab)
-        layout.addWidget(QLabel("Select tasks to exclude from 'Total Work' calculation (e.g. Pause, Lunch):"))
-
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        self.exclusions_content = QWidget()
-        self.exclusions_layout = QVBoxLayout(self.exclusions_content)
-        scroll.setWidget(self.exclusions_content)
-
-        layout.addWidget(scroll)
 
     def _browse_file(self):
         filename, _ = QFileDialog.getSaveFileName(
@@ -367,13 +350,7 @@ class ReportWindow(QDialog):
         """Load tasks and configs asynchronously"""
         repo = TaskRepository()
         self.tasks = await repo.get_all_active()
-
-        # Populate Exclusions
-        for task in self.tasks:
-            cb = QCheckBox(task.name)
-            self.exclusions_layout.addWidget(cb)
-            self.excluded_tasks_checks[task.name] = cb
-
+        
         # Load persisted settings
         self._load_settings()
 
@@ -385,29 +362,20 @@ class ReportWindow(QDialog):
         try:
             with open(self.report_settings_path, 'r', encoding='utf-8') as f:
                 data = yaml.safe_load(f) or {}
-
-            # 1. Load Defaults (Exclusions)
-            defaults = data.get('defaults', {})
-            excluded_names = defaults.get('excluded_tasks', [])
-            for name, cb in self.excluded_tasks_checks.items():
-                if name in excluded_names:
-                    cb.setChecked(True)
+            
+            # Load History for current period
+            self.report_history = data.get('history', {})
 
         except Exception as e:
             print(f"Failed to load settings: {e}")
 
     def _save_settings(self):
         """Save current settings to YAML"""
-        # 1. Gather Exclusions
-        excluded = [name for name, cb in self.excluded_tasks_checks.items() if cb.isChecked()]
-
         data = {
-            'defaults': {
-                'excluded_tasks': excluded
-            }
+            'history': self.report_history
         }
 
-        # 4. Write to file
+        # Write to file
         try:
             self.report_settings_path.parent.mkdir(parents=True, exist_ok=True)
             with open(self.report_settings_path, 'w', encoding='utf-8') as f:
@@ -422,15 +390,12 @@ class ReportWindow(QDialog):
             QMessageBox.warning(self, "Error", "Please select an output file.")
             return
 
-        # 2. Gather Exclusions
-        excluded = [name for name, cb in self.excluded_tasks_checks.items() if cb.isChecked()]
-
-        # 3. Create Config
+        # Create Config (no exclusions - handled automatically by service)
         config = ReportConfiguration(
             period=self.selected_date.strftime("%m.%Y"),
             output_path=output_path,
             time_off_configs=[],
-            excluded_tasks=excluded
+            excluded_tasks=[]
         )
 
         # 4. Generate

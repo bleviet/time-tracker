@@ -109,8 +109,9 @@ class AccountingMatrixService:
         header.extend([self._format_german_date(d) for d in dates])
         writer.writerow(header)
         
-        # Prepare Rows
-        row_items = []
+        # Prepare Rows - split into assigned and unassigned accounting
+        assigned_rows = []  # Has accounting profile
+        unassigned_rows = []  # No accounting profile
         
         for key, row_data in matrix.items():
             # Resolve Accounting Info from Key
@@ -124,21 +125,27 @@ class AccountingMatrixService:
             task_names = sorted(list(acc_tasks_map[key]))
             task_names_str = ", ".join(task_names)
             
-            row_items.append({
+            item = {
                 'task_names_str': task_names_str,
                 'acc_name': acc_name,
                 'acc_attrs': acc_attrs,
                 'row_data': row_data
-            })
+            }
             
-        # Sort by Accounting Profile Name (Empty first or last?)
-        # Let's put named profiles first, then empty.
-        # String sort: Empty string comes first.
-        row_items.sort(key=lambda x: x['acc_name'] or "zzzz")
+            # Separate by accounting assignment
+            if key is not None:
+                assigned_rows.append(item)
+            else:
+                unassigned_rows.append(item)
+            
+        # Sort assigned rows by Accounting Profile Name
+        assigned_rows.sort(key=lambda x: x['acc_name'])
+        unassigned_rows.sort(key=lambda x: x['task_names_str'])
         
         day_totals = {d: 0.0 for d in dates}
         
-        for item in row_items:
+        # Write assigned rows (tasks WITH accounting)
+        for item in assigned_rows:
             row_data = item['row_data']
             acc_name = item['acc_name']
             rows_total_hours = sum(row_data.values())
@@ -234,6 +241,38 @@ class AccountingMatrixService:
             if has_warnings:
                  notes_row.extend(notes_list)
                  writer.writerow(notes_row)
+        
+        # 5. Unassigned Tasks Section (for information only)
+        if unassigned_rows:
+            writer.writerow([])
+            writer.writerow([])
+            writer.writerow(["Tasks without Accounting (not included in totals above)"])
+            writer.writerow([])
+            
+            # Write unassigned rows header (same as main header)
+            writer.writerow(header)
+            
+            for item in unassigned_rows:
+                row_data = item['row_data']
+                rows_total_hours = sum(row_data.values())
+                
+                if rows_total_hours == 0:
+                    continue
+                    
+                row = [item['task_names_str'], ""]  # No accounting profile
+                for col in acc_columns:
+                    row.append("")  # No accounting attributes
+                    
+                row.append(f"{rows_total_hours:.1f}".replace('.', ','))
+                
+                for d in dates:
+                    val = row_data.get(d, 0.0)
+                    if val > 0:
+                        row.append(f"{val:.1f}".replace('.', ','))
+                    else:
+                        row.append("")
+                
+                writer.writerow(row)
         
         return output.getvalue()
 
