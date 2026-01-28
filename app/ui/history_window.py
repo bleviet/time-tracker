@@ -40,6 +40,7 @@ class StatusCalendarWidget(QCalendarWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.status_data: Dict[QDate, str] = {}
+        self._formatted_dates = set()
         self.setGridVisible(True)
         self.setVerticalHeaderFormat(QCalendarWidget.NoVerticalHeader)
 
@@ -85,7 +86,21 @@ class StatusCalendarWidget(QCalendarWidget):
 
     def set_status_data(self, data: Dict[QDate, str]):
         """Update the status data and refresh the calendar display"""
+        # Clear previous formatting
+        clear_format = QTextCharFormat()
+        for qdate in self._formatted_dates:
+            self.setDateTextFormat(qdate, clear_format)
+        self._formatted_dates.clear()
+
         self.status_data = data
+        # Apply formatting for vacation/sickness
+        for qdate, state in self.status_data.items():
+            if state == self.STATE_WORK:
+                continue
+            fmt = QTextCharFormat()
+            fmt.setBackground(self.COLORS.get(state, self.COLORS[self.STATE_WORK]))
+            self.setDateTextFormat(qdate, fmt)
+            self._formatted_dates.add(qdate)
         self.updateCells()
 
     def paintCell(self, painter: QPainter, rect: QRect, date: QDate):
