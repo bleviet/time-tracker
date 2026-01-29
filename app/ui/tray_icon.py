@@ -23,7 +23,6 @@ from app.infra.repository import TaskRepository
 from app.domain.models import Task
 from .dialogs import InterruptionDialog
 from .main_window import MainWindow
-from .report_window import ReportWindow
 from .history_window import HistoryWindow
 from .settings_dialog import SettingsDialog
 from app.utils import get_resource_path
@@ -207,10 +206,7 @@ class SystemTrayApp:
         history_action.triggered.connect(self._show_history_window)
         menu.addAction(history_action)
         
-        # Generate Report
-        report_action = QAction("Generate Report...", self.app)
-        report_action.triggered.connect(self._generate_report_sync)
-        menu.addAction(report_action)
+
         
         menu.addSeparator()
         
@@ -256,13 +252,7 @@ class SystemTrayApp:
         except Exception as e:
             QMessageBox.warning(None, "Error", f"Failed to stop task:\n{e}")
     
-    def _generate_report_sync(self):
-        """Open the report generation wizard"""
-        try:
-            self.report_window = ReportWindow()
-            self.report_window.show()
-        except Exception as e:
-            QMessageBox.warning(None, "Error", f"Failed to open report wizard:\n{e}")
+
     
     def update_tooltip(self, text: str, seconds: int):
         """Update the tray icon tooltip with current time"""

@@ -16,6 +16,7 @@ from app.infra.repository import TaskRepository, TimeEntryRepository
 from app.ui.dialogs import ManualEntryDialog
 from app.ui.accounting_dialogs import AccountingManagementDialog
 from app.ui.task_dialogs import TaskManagementDialog
+from app.ui.report_window import ReportWindow
 from app.infra.config import get_settings
 
 
@@ -434,6 +435,28 @@ class HistoryWindow(QWidget):
 
         btn_layout.addWidget(self.accounting_btn)
         btn_layout.addWidget(self.tasks_btn)
+        
+        self.report_btn = QPushButton("📊 Generate Report")
+        self.report_btn.clicked.connect(self._generate_report)
+        self.report_btn.setStyleSheet("""
+            QPushButton {
+                 background-color: #4CAF50;
+                 color: white;
+                 font-weight: bold;
+                 border: none;
+                 border-radius: 6px;
+                 padding: 10px 20px;
+                 font-size: 14px;
+            }
+            QPushButton:hover {
+                background-color: #45a049;
+            }
+            QPushButton:pressed {
+                background-color: #3d8b40;
+            }
+        """)
+        btn_layout.addWidget(self.report_btn)
+        
         btn_layout.addStretch()
         btn_layout.addWidget(self.add_btn)
 
@@ -451,6 +474,19 @@ class HistoryWindow(QWidget):
         if dialog.exec():
             # Refresh tasks if needed (e.g. if names changed)
             self._load_tasks()
+
+    def _generate_report(self):
+        """Open the report generation wizard"""
+        try:
+            # Get current month/year from calendar
+            current_date = self.calendar.selectedDate()
+            
+            # Create report window and set it to the current month
+            self.report_window = ReportWindow()
+            self.report_window._set_period(current_date.year(), current_date.month())
+            self.report_window.show()
+        except Exception as e:
+            QMessageBox.warning(self, "Error", f"Failed to open report wizard:\n{e}")
 
     def _show_context_menu(self, pos):
         """Show context menu for table"""
