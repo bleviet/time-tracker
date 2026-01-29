@@ -164,9 +164,6 @@ class SystemTrayApp:
             self.show_shortcut.activated.connect(self._show_main_window)
             self.show_shortcut.setContext(Qt.ApplicationShortcut)
             
-            # Check for holidays
-            self.check_today()
-
             if not self.tray_available:
                 QMessageBox.information(
                     self.main_window,
@@ -175,6 +172,9 @@ class SystemTrayApp:
                     "'AppIndicator and KStatusNotifierItem Support' extension "
                     "to enable tray icons."
                 )
+            
+            # Check for holidays
+            self.check_today()
             
             # Start system monitoring
             self.system_monitor.start_monitoring()
