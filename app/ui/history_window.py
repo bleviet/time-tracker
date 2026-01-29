@@ -126,7 +126,7 @@ class HistoryWindow(QWidget):
 
     def __init__(self, loop=None, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("History & Daily Log")
+        self.setWindowTitle("Monthly Overview")
         self.resize(800, 600)
 
         # Apply Main Window-like styling (Light, Modern)

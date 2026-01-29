@@ -202,7 +202,7 @@ class SystemTrayApp:
         menu.addSeparator()
 
         # View History
-        history_action = QAction("History & Manual Entry...", self.app)
+        history_action = QAction("Monthly Overview...", self.app)
         history_action.triggered.connect(self._show_history_window)
         menu.addAction(history_action)
         
