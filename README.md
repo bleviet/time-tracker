@@ -208,6 +208,7 @@ Data is stored in SQLite at:
 ### System tray icon doesn't show
 - On Linux, ensure you have a system tray (like `gnome-shell-extension-appindicator`)
 - Try restarting the application
+- The application exits with a message if no tray is detected (common on GNOME Shell + Wayland).
 
 ### Lock/unlock detection doesn't work
 - **Windows**: Ensure `pywin32` is installed

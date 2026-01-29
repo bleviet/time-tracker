@@ -34,10 +34,11 @@ class MainWindow(QMainWindow):
     closed = Signal()  # Emitted when window is closed
     show_history = Signal() # Request to show history window
     
-    def __init__(self, timer_service: TimerService, tasks: List[Task], parent=None):
+    def __init__(self, timer_service: TimerService, tasks: List[Task], parent=None, minimize_to_tray: bool = True):
         super().__init__(parent)
         self.timer_service = timer_service
         self.tasks = tasks
+        self.minimize_to_tray = minimize_to_tray
         self.loop = asyncio.get_event_loop()
         
         # Window settings for minimal always-on-top widget
@@ -379,6 +380,9 @@ class MainWindow(QMainWindow):
     
     def closeEvent(self, event):
         """Override close event to minimize to tray instead of quitting"""
-        event.ignore()
-        self.hide()
-        self.closed.emit()
+        if self.minimize_to_tray:
+            event.ignore()
+            self.hide()
+            self.closed.emit()
+        else:
+            event.accept()
