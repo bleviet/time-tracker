@@ -45,7 +45,15 @@ class SystemTrayApp:
         # Settings
         self.settings = get_settings()
         self.tray_available = QSystemTrayIcon.isSystemTrayAvailable()
-        self.minimize_to_tray = self.settings.preferences.minimize_to_tray and self.tray_available
+        if not self.tray_available:
+            QMessageBox.critical(
+                None,
+                "System Tray Required",
+                "Time Tracker requires a system tray to run. On GNOME Shell, install the "
+                "'AppIndicator and KStatusNotifierItem Support' extension to enable tray icons."
+            )
+            sys.exit(1)
+        self.minimize_to_tray = self.settings.preferences.minimize_to_tray
         self.app.setQuitOnLastWindowClosed(not self.minimize_to_tray)
         
         # Services
@@ -163,15 +171,6 @@ class SystemTrayApp:
             self.show_shortcut = QShortcut(QKeySequence("Ctrl+Shift+T"), self.main_window)
             self.show_shortcut.activated.connect(self._show_main_window)
             self.show_shortcut.setContext(Qt.ApplicationShortcut)
-            
-            if not self.tray_available:
-                QMessageBox.information(
-                    self.main_window,
-                    "System Tray Unavailable",
-                    "No system tray was detected. On GNOME Shell, install the "
-                    "'AppIndicator and KStatusNotifierItem Support' extension "
-                    "to enable tray icons."
-                )
             
             # Check for holidays
             self.check_today()
