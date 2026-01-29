@@ -135,7 +135,7 @@ class HistoryWindow(QWidget):
     def __init__(self, loop=None, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Monthly Overview")
-        self.resize(800, 600)
+        self.resize(1100, 850)
 
         # Apply Main Window-like styling (Light, Modern)
         self.setStyleSheet("""
