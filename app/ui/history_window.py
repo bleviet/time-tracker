@@ -289,15 +289,24 @@ class HistoryWindow(QWidget):
     def _setup_ui(self):
         layout = QHBoxLayout(self)
 
-        # Left Panel: Calendar
+        # Left Panel: Calendar and Work Regulations with Splitter
         left_layout = QVBoxLayout()
+        
+        #Create splitter for calendar and work regulations
+        left_splitter = QSplitter(Qt.Vertical)
+        
+        # Top widget: Calendar and Legend
+        calendar_widget = QWidget()
+        calendar_layout = QVBoxLayout(calendar_widget)
+        calendar_layout.setContentsMargins(0, 0, 0, 0)
+        
         self.calendar = StatusCalendarWidget()
         self.calendar.setGridVisible(True)
         self.calendar.selectionChanged.connect(self._on_date_selected)
         self.calendar.currentPageChanged.connect(self._on_month_changed)
         self.calendar.dateContextRequested.connect(self._cycle_day_status)
 
-        left_layout.addWidget(self.calendar)
+        calendar_layout.addWidget(self.calendar)
 
         # Legend for day types
         legend_layout = QHBoxLayout()
@@ -324,7 +333,9 @@ class HistoryWindow(QWidget):
         legend_layout.addWidget(hint_label)
 
         legend_layout.addStretch()
-        left_layout.addLayout(legend_layout)
+        calendar_layout.addLayout(legend_layout)
+        
+        left_splitter.addWidget(calendar_widget)
 
         # Work Regulations Panel
         regulations_group = QGroupBox("Work Regulations")
@@ -379,19 +390,19 @@ class HistoryWindow(QWidget):
             }
         """
         
-        self.check_enable_compliance = QCheckBox("✓ Enable German Compliance (10h limit)")
+        self.check_enable_compliance = QCheckBox("Enable German Compliance (10h limit)")
         self.check_enable_compliance.setToolTip("Warns when daily hours exceed 10 hours")
         self.check_enable_compliance.setStyleSheet(checkbox_style)
         self.check_enable_compliance.stateChanged.connect(self._save_regulations)
         regulations_layout.addWidget(self.check_enable_compliance)
 
-        self.check_breaks = QCheckBox("✓ Check Mandatory Breaks")  
+        self.check_breaks = QCheckBox("Check Mandatory Breaks")  
         self.check_breaks.setToolTip("Warn if >6h without 30m break")
         self.check_breaks.setStyleSheet(checkbox_style)
         self.check_breaks.stateChanged.connect(self._save_regulations)
         regulations_layout.addWidget(self.check_breaks)
 
-        self.check_rest = QCheckBox("✓ Check Rest Periods (11h)")
+        self.check_rest = QCheckBox("Check Rest Periods (11h)")
         self.check_rest.setToolTip("Warn if <11h between work days")
         self.check_rest.setStyleSheet(checkbox_style)
         self.check_rest.stateChanged.connect(self._save_regulations)
@@ -403,9 +414,16 @@ class HistoryWindow(QWidget):
         self.violations_label.setWordWrap(True)
         self.violations_label.hide()
         regulations_layout.addWidget(self.violations_label)
+        regulations_layout.addStretch()  # Push content to top
 
-        left_layout.addWidget(regulations_group)
-        left_layout.addStretch()  # Push everything to top
+        left_splitter.addWidget(regulations_group)
+        
+        # Set initial splitter sizes
+        left_splitter.setSizes([400, 300])
+        left_splitter.setStretchFactor(0, 2)
+        left_splitter.setStretchFactor(1, 1)
+        
+        left_layout.addWidget(left_splitter)
 
         # User repo for saving
         self.user_repo = UserRepository()
