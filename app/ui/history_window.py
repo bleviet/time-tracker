@@ -428,12 +428,6 @@ class HistoryWindow(QWidget):
 
         left_layout.addWidget(self.summary_table)
 
-        # Total Label
-        self.total_label = QLabel("Total: 00:00")
-        self.total_label.setStyleSheet("font-size: 16px; font-weight: bold; margin-top: 10px; color: #1976d2;")
-        self.total_label.setAlignment(Qt.AlignRight)
-        left_layout.addWidget(self.total_label)
-
         # left_layout.addStretch() # Removed stretch to let table expand, or keep it if table is small?
         # Better to have table take available space or fixed?
         # Let's simple use weight.
@@ -450,8 +444,8 @@ class HistoryWindow(QWidget):
 
         # Table
         self.table = QTableWidget()
-        self.table.setColumnCount(6)
-        self.table.setHorizontalHeaderLabels(["Task", "Start", "End", "Duration", "Notes", "Status"])
+        self.table.setColumnCount(5)
+        self.table.setHorizontalHeaderLabels(["Task", "Start", "End", "Duration", "Notes"])
         self.table.verticalHeader().setVisible(False)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
@@ -467,7 +461,6 @@ class HistoryWindow(QWidget):
         header.setSectionResizeMode(2, QHeaderView.ResizeToContents) # End
         header.setSectionResizeMode(3, QHeaderView.ResizeToContents) # Duration
         header.setSectionResizeMode(4, QHeaderView.Stretch) # Notes
-        header.setSectionResizeMode(5, QHeaderView.ResizeToContents) # Status
 
         right_layout.addWidget(self.table)
 
@@ -620,40 +613,92 @@ class HistoryWindow(QWidget):
         
         total_hours = total_seconds / 3600.0
         violations = []
-        status_text = ""
+        
+        # Check 10h limit - will color Total row RED if exceeded
+        limit_exceeded = False
         if self.check_enable_compliance.isChecked():
             if total_hours > 10.0:
                 violations.append(f"⚠️ Exceeded 10h limit: {total_hours:.1f}h worked")
-                status_text = "⚠️ 10h limit"
-        # Check daily target (always, even if compliance unchecked)
+                limit_exceeded = True
+        
+        # Check daily target - will add Overtime row if exceeded
         target = self.spin_work_hours.value()
-        if total_hours > target + 2.0:
+        overtime_seconds = 0
+        if total_hours > target:
             over_hours = total_hours - target
-            violations.append(f"📊 {over_hours:.1f}h over daily target ({target:.1f}h)")
-            if not status_text:
-                status_text = f"📊 +{over_hours:.1f}h"
-        # Update Status column for all rows with color coding
-        for row in range(self.table.rowCount()):
-            status_item = QTableWidgetItem(status_text)
-            if status_text:
-                status_item.setForeground(QColor("#d32f2f"))
-                font = status_item.font()
-                font.setBold(True)
-                status_item.setFont(font)
-            self.table.setItem(row, 5, status_item)
+            overtime_seconds = int((total_hours - target) * 3600)
+            if over_hours > 2.0:  # Only warn if significantly over
+                violations.append(f"📊 {over_hours:.1f}h over daily target ({target:.1f}h)")
+        
+        # Remove existing Overtime row FIRST (to prevent duplication)
+        row_count = self.summary_table.rowCount()
+        if row_count > 1:
+            last_row_item = self.summary_table.item(row_count - 1, 0)
+            if last_row_item and last_row_item.text() == "Overtime":
+                self.summary_table.removeRow(row_count - 1)
+                row_count -= 1  # Update count after removal
+        
+        # Color the Total row RED if 10h limit exceeded
+        # Now row_count-1 is guaranteed to be Total row
+        if row_count > 0:
+            total_row = row_count - 1
+            
+            total_name_item = self.summary_table.item(total_row, 0)
+            total_dur_item = self.summary_table.item(total_row, 1)
+            
+            if total_name_item and total_dur_item:
+                if limit_exceeded:
+                    # Mark Total RED for 10h limit violation
+                    total_name_item.setForeground(QColor("#d32f2f"))
+                    total_dur_item.setForeground(QColor("#d32f2f"))
+                else:
+                    # Normal blue color
+                    total_name_item.setForeground(QColor("#1976d2"))
+                    total_dur_item.setForeground(QColor("#1976d2"))
+        
+        # Add Overtime row if target exceeded (only info, not a violation warning)
+        if overtime_seconds > 0:
+            # Add an extra row for overtime
+            current_rows = self.summary_table.rowCount()
+            self.summary_table.setRowCount(current_rows + 1)
+            
+            overtime_row = current_rows
+            overtime_name_item = QTableWidgetItem("Overtime")
+            overtime_name_item.setForeground(QColor("#f57c00"))  # Orange color for info
+            font = overtime_name_item.font()
+            font.setItalic(True)
+            overtime_name_item.setFont(font)
+            self.summary_table.setItem(overtime_row, 0, overtime_name_item)
+            
+            hours, remainder = divmod(overtime_seconds, 3600)
+            minutes, seconds = divmod(remainder, 60)
+            overtime_dur_str = f"+{hours:02d}:{minutes:02d}"
+            
+            overtime_dur_item = QTableWidgetItem(overtime_dur_str)
+            overtime_dur_item.setForeground(QColor("#f57c00"))
+            overtime_dur_item.setFont(font)
+            self.summary_table.setItem(overtime_row, 1, overtime_dur_item)
+
+        # Update violations label
         if violations:
             self.violations_label.setText("\n".join(violations))
             self.violations_label.show()
         else:
             self.violations_label.hide()
+            
+        # Store violation for this date for calendar display
         selected_date = self.calendar.selectedDate()
         if not hasattr(self, 'month_violations'):
             self.month_violations = {}
+        
         if violations:
             self.month_violations[selected_date] = violations
         elif selected_date in self.month_violations:
             del self.month_violations[selected_date]
+        
+        # Trigger calendar repaint
         self.calendar.updateCells()
+
 
     def _show_context_menu(self, pos):
         """Show context menu for table"""
@@ -990,9 +1035,6 @@ class HistoryWindow(QWidget):
 
             # Notes
             self.table.setItem(row, 4, QTableWidgetItem(entry.notes or ""))
-            
-            # Status
-            self.table.setItem(row, 5, QTableWidgetItem(""))
 
         # 2. Populate Summary Table
         sorted_totals = sorted(task_totals.items(), key=lambda x: x[1], reverse=True)
@@ -1007,10 +1049,26 @@ class HistoryWindow(QWidget):
 
             self.summary_table.setItem(row, 1, QTableWidgetItem(dur_str))
 
-        # 3. Update Total Label
+        # 3. Add Total as last row in summary table
+        self.summary_table.setRowCount(len(sorted_totals) + 1)  # +1 for total row
+        
+        total_row = len(sorted_totals)
+        total_name_item = QTableWidgetItem("Total")
+        total_name_item.setForeground(QColor("#1976d2"))
+        font = total_name_item.font()
+        font.setBold(True)
+        total_name_item.setFont(font)
+        self.summary_table.setItem(total_row, 0, total_name_item)
+        
         hours, remainder = divmod(day_total_seconds, 3600)
         minutes, seconds = divmod(remainder, 60)
-        self.total_label.setText(f"Total: {hours:02d}:{minutes:02d}")
+        total_dur_str = f"{hours:02d}:{minutes:02d}"
+        
+        total_dur_item = QTableWidgetItem(total_dur_str)
+        total_dur_item.setForeground(QColor("#1976d2"))
+        total_dur_item.setFont(font)
+        self.summary_table.setItem(total_row, 1, total_dur_item)
+        
         self._check_violations()
 
     def _open_manual_entry(self):
