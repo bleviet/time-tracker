@@ -119,12 +119,17 @@ class StatusCalendarWidget(QCalendarWidget):
         super().paintCell(painter, rect, date)
         
         # Draw violation warning icon if exists
-        if hasattr(self.parent(), 'month_violations') and date in self.parent().month_violations:
+        if hasattr(self, '_violations') and date in self._violations:
             painter.save()
             painter.setPen(QColor("#d32f2f"))
             # Draw warning triangle in top-right corner
             painter.drawText(rect.adjusted(rect.width()-18, 2, 0, 0), Qt.AlignTop | Qt.AlignRight, "⚠")
             painter.restore()
+
+    def set_violations(self, violations: Dict[QDate, List[str]]):
+        """Set violations data for display"""
+        self._violations = violations
+        self.updateCells()
 
 
 class HistoryWindow(QWidget):
@@ -738,8 +743,8 @@ class HistoryWindow(QWidget):
         elif selected_date in self.month_violations:
             del self.month_violations[selected_date]
         
-        # Trigger calendar repaint
-        self.calendar.updateCells()
+        # Pass violations data to calendar
+        self.calendar.set_violations(self.month_violations)
 
 
     def _show_context_menu(self, pos):
