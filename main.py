@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 """
 Time Tracker Application - Main Entry Point
 

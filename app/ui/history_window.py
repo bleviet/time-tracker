@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
     QTableWidgetItem, QPushButton, QLabel, QHeaderView, QMessageBox, QMenu,
     QAbstractItemView, QGroupBox, QCheckBox, QDoubleSpinBox, QSplitter
 )
-from PySide6.QtCore import Qt, QDate, Signal, QRect, QEvent
+from PySide6.QtCore import Qt, QDate, Signal, QRect, QEvent, QLocale
 from PySide6.QtGui import QColor, QPalette, QAction, QPainter, QTextCharFormat, QKeySequence, QShortcut
 
 from app.domain.models import Task, TimeEntry
@@ -55,35 +55,48 @@ class StatusCalendarWidget(QCalendarWidget):
         """Filter events to catch right-clicks on calendar cells"""
         if event.type() == QEvent.MouseButtonPress:
             if event.button() == Qt.RightButton:
-                # Get the date at the click position
-                # First, let the calendar handle the click to select the date
                 view = self.findChild(QAbstractItemView)
                 if view and obj == view.viewport():
-                    # Map the click position to find which date was clicked
-                    # We'll use a simpler approach: just use the currently selected date
-                    # But first, simulate a left click to select the date under cursor
-                    from PySide6.QtGui import QMouseEvent
-                    from PySide6.QtCore import QPoint
-
-                    # Create a left-click event at the same position to select the date
-                    left_click = QMouseEvent(
-                        QEvent.MouseButtonPress,
-                        event.position(),
-                        Qt.LeftButton,
-                        Qt.LeftButton,
-                        Qt.NoModifier
-                    )
-                    # Send to the view to update selection
-                    view.viewport().event(left_click)
-
-                    # Small delay to let selection update, then emit signal
-                    # Actually, emit immediately with selected date
-                    target_date = self.selectedDate()
-                    if target_date and target_date.isValid():
-                        self.dateContextRequested.emit(target_date)
-                    return True  # Event handled
+                    index = view.indexAt(event.position().toPoint())
+                    if index.isValid():
+                        date = self._get_date_from_index(index)
+                        if date.isValid():
+                            self.dateContextRequested.emit(date)
+                        return True  # Event handled
 
         return super().eventFilter(obj, event)
+
+    def _get_date_from_index(self, index):
+        """Calculate QDate from grid index"""
+        # Row 0 is the header (Day names), so ignore it
+        if index.row() < 1:
+            return QDate()
+
+        year = self.yearShown()
+        month = self.monthShown()
+        
+        first_day_of_month = QDate(year, month, 1)
+        
+        # Get first day of week setting
+        first_day_setting = self.firstDayOfWeek()
+        if first_day_setting == 0:
+            first_day_setting = QLocale.system().firstDayOfWeek()
+            
+        # Calculate offset to the first cell (0,0)
+        # diff is how many days FIRST DAY OF MONTH is ahead of FIRST COL
+        # Ensure we treat first_day_setting as int (Qt.DayOfWeek enum)
+        diff = first_day_of_month.dayOfWeek() - first_day_setting.value
+        if diff < 0:
+            diff += 7
+            
+        # Start date of the grid (cell 0,0)
+        start_date = first_day_of_month.addDays(-diff)
+        
+        # Target date
+        # The internal QTableView of QCalendarWidget has a header row at row 0 (Day names)
+        # So the actual dates start at row 1. We must subtract 1 from the row index.
+        days_add = (index.row() - 1) * 7 + index.column()
+        return start_date.addDays(days_add)
 
     def set_status_data(self, data: Dict[QDate, str]):
         """Update the status data and refresh the calendar display"""
@@ -103,6 +116,9 @@ class StatusCalendarWidget(QCalendarWidget):
             self.setDateTextFormat(qdate, fmt)
             self._formatted_dates.add(qdate)
         self.updateCells()
+        # Force immediate repaint of the whole window to ensure visual update
+        if self.window():
+            self.window().repaint()
 
     def paintCell(self, painter: QPainter, rect: QRect, date: QDate):
         """Override to paint cell backgrounds based on day status"""
@@ -247,13 +263,14 @@ class HistoryWindow(QWidget):
                 outline: 0;
             }
             QCalendarWidget QAbstractItemView::item:selected {
-                background-color: #ff9800;
-                color: #ffffff;
+                background-color: transparent;
+                color: #000;
                 font-weight: bold;
-                border: 1px solid #f57c00;
+                border: 2px solid #1976d2;
             }
             QCalendarWidget QAbstractItemView::item:hover {
-                background-color: #e0e0e0;
+                background-color: transparent;
+                border: 2px solid #1976d2;
                 color: #000;
             }
         """)
