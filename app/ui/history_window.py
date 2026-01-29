@@ -467,6 +467,31 @@ class HistoryWindow(QWidget):
         header.setSectionResizeMode(4, QHeaderView.Stretch) # Notes
 
         task_table_layout.addWidget(self.table)
+        
+        # Add Manual Entry Button (below task table)
+        self.add_btn = QPushButton("+ Add Manual Entry")
+        self.add_btn.clicked.connect(self._open_manual_entry)
+        self.add_btn.setCursor(Qt.PointingHandCursor)
+        self.add_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #1976d2;
+                color: white;
+                font-weight: bold;
+                border-radius: 6px;
+                padding: 10px 20px;
+                font-size: 14px;
+                border: none;
+                margin-top: 10px;
+            }
+            QPushButton:hover {
+                background-color: #1565c0;
+            }
+            QPushButton:pressed {
+                background-color: #0d47a1;
+            }
+        """)
+        task_table_layout.addWidget(self.add_btn)
+        
         splitter.addWidget(task_table_widget)
 
         # Bottom widget: Daily Summary
@@ -520,26 +545,7 @@ class HistoryWindow(QWidget):
             }
         """)
 
-        self.add_btn = QPushButton("+ Add Manual Entry")
-        self.add_btn.clicked.connect(self._open_manual_entry)
-        self.add_btn.setCursor(Qt.PointingHandCursor)
-        self.add_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #1976d2;
-                color: white;
-                font-weight: bold;
-                border-radius: 6px;
-                padding: 10px 20px;
-                font-size: 14px;
-                border: none;
-            }
-            QPushButton:hover {
-                background-color: #1565c0;
-            }
-            QPushButton:pressed {
-                background-color: #0d47a1;
-            }
-        """)
+
 
         self.tasks_btn = QPushButton("Manage Tasks")
         self.tasks_btn.clicked.connect(self._open_tasks)
@@ -582,7 +588,6 @@ class HistoryWindow(QWidget):
         btn_layout.addWidget(self.report_btn)
         
         btn_layout.addStretch()
-        btn_layout.addWidget(self.add_btn)
 
         right_layout.addLayout(btn_layout)
         layout.addLayout(right_layout, stretch=3) # Make right side wider
