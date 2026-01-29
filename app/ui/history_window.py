@@ -6,7 +6,7 @@ from typing import List, Dict
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QCalendarWidget, QTableWidget,
     QTableWidgetItem, QPushButton, QLabel, QHeaderView, QMessageBox, QMenu,
-    QAbstractItemView, QGroupBox, QCheckBox, QDoubleSpinBox
+    QAbstractItemView, QGroupBox, QCheckBox, QDoubleSpinBox, QSplitter
 )
 from PySide6.QtCore import Qt, QDate, Signal, QRect, QEvent
 from PySide6.QtGui import QColor, QPalette, QAction, QPainter, QTextCharFormat, QKeySequence, QShortcut
@@ -405,36 +405,14 @@ class HistoryWindow(QWidget):
         regulations_layout.addWidget(self.violations_label)
 
         left_layout.addWidget(regulations_group)
+        left_layout.addStretch()  # Push everything to top
 
         # User repo for saving
         self.user_repo = UserRepository()
 
-        # Summary for selected day
-        self.summary_header = QLabel("Daily Summary")
-        self.summary_header.setStyleSheet("font-size: 14px; font-weight: bold; margin-top: 15px; margin-bottom: 5px;")
-        left_layout.addWidget(self.summary_header)
-
-        self.summary_table = QTableWidget()
-        self.summary_table.setColumnCount(2)
-        self.summary_table.setHorizontalHeaderLabels(["Task", "Duration"])
-        self.summary_table.verticalHeader().setVisible(False)
-        self.summary_table.setSelectionMode(QTableWidget.NoSelection)
-        self.summary_table.setFocusPolicy(Qt.NoFocus)
-
-        # Header setup
-        header = self.summary_table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.Stretch)
-        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
-
-        left_layout.addWidget(self.summary_table)
-
-        # left_layout.addStretch() # Removed stretch to let table expand, or keep it if table is small?
-        # Better to have table take available space or fixed?
-        # Let's simple use weight.
-
         layout.addLayout(left_layout, stretch=1)
 
-        # Right Panel: Entries Table
+        # Right Panel: Entries Table and Daily Summary with Splitter
         right_layout = QVBoxLayout()
 
         # Title for the table
@@ -442,6 +420,14 @@ class HistoryWindow(QWidget):
         self.date_label.setStyleSheet("font-size: 18px; font-weight: bold; margin-bottom: 5px;")
         right_layout.addWidget(self.date_label)
 
+        # Create splitter for task table and daily summary
+        splitter = QSplitter(Qt.Vertical)
+        
+        # Top widget: Task entries table
+        task_table_widget = QWidget()
+        task_table_layout = QVBoxLayout(task_table_widget)
+        task_table_layout.setContentsMargins(0, 0, 0, 0)
+        
         # Table
         self.table = QTableWidget()
         self.table.setColumnCount(5)
@@ -462,7 +448,40 @@ class HistoryWindow(QWidget):
         header.setSectionResizeMode(3, QHeaderView.ResizeToContents) # Duration
         header.setSectionResizeMode(4, QHeaderView.Stretch) # Notes
 
-        right_layout.addWidget(self.table)
+        task_table_layout.addWidget(self.table)
+        splitter.addWidget(task_table_widget)
+
+        # Bottom widget: Daily Summary
+        summary_widget = QWidget()
+        summary_layout = QVBoxLayout(summary_widget)
+        summary_layout.setContentsMargins(0, 0, 0, 0)
+        
+        # Daily Summary Section
+        self.summary_header = QLabel("Daily Summary")
+        self.summary_header.setStyleSheet("font-size: 14px; font-weight: bold; margin-bottom: 5px;")
+        summary_layout.addWidget(self.summary_header)
+
+        self.summary_table = QTableWidget()
+        self.summary_table.setColumnCount(2)
+        self.summary_table.setHorizontalHeaderLabels(["Task", "Duration"])
+        self.summary_table.verticalHeader().setVisible(False)
+        self.summary_table.setSelectionMode(QTableWidget.NoSelection)
+        self.summary_table.setFocusPolicy(Qt.NoFocus)
+
+        # Header setup
+        summary_header = self.summary_table.horizontalHeader()
+        summary_header.setSectionResizeMode(0, QHeaderView.Stretch)
+        summary_header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+
+        summary_layout.addWidget(self.summary_table)
+        splitter.addWidget(summary_widget)
+        
+        # Set initial splitter sizes (60% task table, 40% summary)
+        splitter.setSizes([600, 400])
+        splitter.setStretchFactor(0, 3)  # Task table gets more stretch priority
+        splitter.setStretchFactor(1, 2)  # Summary gets less
+        
+        right_layout.addWidget(splitter)
 
         # Buttons
         btn_layout = QHBoxLayout()
