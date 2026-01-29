@@ -194,10 +194,7 @@ class SystemTrayApp:
         show_action.triggered.connect(self._show_main_window)
         menu.addAction(show_action)
         
-        # Stop Action
-        stop_action = QAction("Stop Tracking", self.app)
-        stop_action.triggered.connect(self._stop_task_sync)
-        menu.addAction(stop_action)
+
         
         menu.addSeparator()
 
