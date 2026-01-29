@@ -117,6 +117,14 @@ class StatusCalendarWidget(QCalendarWidget):
 
         # Call parent to draw the date number
         super().paintCell(painter, rect, date)
+        
+        # Draw violation warning icon if exists
+        if hasattr(self.parent(), 'month_violations') and date in self.parent().month_violations:
+            painter.save()
+            painter.setPen(QColor("#d32f2f"))
+            # Draw warning triangle in top-right corner
+            painter.drawText(rect.adjusted(rect.width()-18, 2, 0, 0), Qt.AlignTop | Qt.AlignRight, "⚠")
+            painter.restore()
 
 
 class HistoryWindow(QWidget):
@@ -269,6 +277,7 @@ class HistoryWindow(QWidget):
 
         self.tasks: List[Task] = []
         self.current_entries: List[TimeEntry] = []
+        self.month_violations: Dict[QDate, List[str]] = {}
 
         self._setup_ui()
         self._load_tasks()
@@ -317,9 +326,23 @@ class HistoryWindow(QWidget):
         legend_layout.addStretch()
         left_layout.addLayout(legend_layout)
 
-        # Work Regulations Panel (Collapsible)
+        # Work Regulations Panel
         regulations_group = QGroupBox("Work Regulations")
         regulations_group.setCheckable(False)
+        regulations_group.setStyleSheet("""
+            QGroupBox {
+                font-weight: bold;
+                border: 2px solid #ccc;
+                border-radius: 6px;
+                margin-top: 12px;
+                padding-top: 16px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px;
+            }
+        """)
         regulations_layout = QVBoxLayout(regulations_group)
         regulations_layout.setSpacing(8)
 
@@ -338,18 +361,39 @@ class HistoryWindow(QWidget):
         regulations_layout.addLayout(target_layout)
 
         # Compliance Checks
-        self.check_enable_compliance = QCheckBox("Enable German Compliance (10h limit)")
+        checkbox_style = """
+            QCheckBox {
+                spacing: 8px;
+                padding: 4px;
+            }
+            QCheckBox::indicator {
+                width: 18px;
+                height: 18px;
+                border: 2px solid #999;
+                border-radius: 3px;
+                background: white;
+            }
+            QCheckBox::indicator:checked {
+                background: #1976d2;
+                border-color: #1976d2;
+            }
+        """
+        
+        self.check_enable_compliance = QCheckBox("✓ Enable German Compliance (10h limit)")
         self.check_enable_compliance.setToolTip("Warns when daily hours exceed 10 hours")
+        self.check_enable_compliance.setStyleSheet(checkbox_style)
         self.check_enable_compliance.stateChanged.connect(self._save_regulations)
         regulations_layout.addWidget(self.check_enable_compliance)
 
-        self.check_breaks = QCheckBox("Check Mandatory Breaks")  
+        self.check_breaks = QCheckBox("✓ Check Mandatory Breaks")  
         self.check_breaks.setToolTip("Warn if >6h without 30m break")
+        self.check_breaks.setStyleSheet(checkbox_style)
         self.check_breaks.stateChanged.connect(self._save_regulations)
         regulations_layout.addWidget(self.check_breaks)
 
-        self.check_rest = QCheckBox("Check Rest Periods (11h)")
+        self.check_rest = QCheckBox("✓ Check Rest Periods (11h)")
         self.check_rest.setToolTip("Warn if <11h between work days")
+        self.check_rest.setStyleSheet(checkbox_style)
         self.check_rest.stateChanged.connect(self._save_regulations)
         regulations_layout.addWidget(self.check_rest)
 
@@ -406,8 +450,8 @@ class HistoryWindow(QWidget):
 
         # Table
         self.table = QTableWidget()
-        self.table.setColumnCount(5)
-        self.table.setHorizontalHeaderLabels(["Task", "Start", "End", "Duration", "Notes"])
+        self.table.setColumnCount(6)
+        self.table.setHorizontalHeaderLabels(["Task", "Start", "End", "Duration", "Notes", "Status"])
         self.table.verticalHeader().setVisible(False)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
@@ -423,6 +467,7 @@ class HistoryWindow(QWidget):
         header.setSectionResizeMode(2, QHeaderView.ResizeToContents) # End
         header.setSectionResizeMode(3, QHeaderView.ResizeToContents) # Duration
         header.setSectionResizeMode(4, QHeaderView.Stretch) # Notes
+        header.setSectionResizeMode(5, QHeaderView.ResizeToContents) # Status
 
         right_layout.addWidget(self.table)
 
@@ -563,22 +608,52 @@ class HistoryWindow(QWidget):
 
     def _check_violations(self):
         """Check for work regulation violations on current date"""
-        if not self.check_enable_compliance.isChecked():
-            self.violations_label.hide()
-            return
-        total_seconds = sum(entry.duration_seconds for entry in self.current_entries)
+        # Calculate total hours including active entries (same logic as _populate_tables)
+        total_seconds = 0
+        for entry in self.current_entries:
+            if entry.end_time is None:
+                # Active entry - calculate duration up to now
+                duration = int((datetime.now() - entry.start_time).total_seconds())
+            else:
+                duration = entry.duration_seconds
+            total_seconds += duration
+        
         total_hours = total_seconds / 3600.0
         violations = []
-        if total_hours > 10.0:
-            violations.append(f"⚠️ Exceeded 10h limit: {total_hours:.1f}h")
+        status_text = ""
+        if self.check_enable_compliance.isChecked():
+            if total_hours > 10.0:
+                violations.append(f"⚠️ Exceeded 10h limit: {total_hours:.1f}h worked")
+                status_text = "⚠️ 10h limit"
+        # Check daily target (always, even if compliance unchecked)
         target = self.spin_work_hours.value()
         if total_hours > target + 2.0:
-            violations.append(f"📊 {total_hours - target:.1f}h over daily target")
+            over_hours = total_hours - target
+            violations.append(f"📊 {over_hours:.1f}h over daily target ({target:.1f}h)")
+            if not status_text:
+                status_text = f"📊 +{over_hours:.1f}h"
+        # Update Status column for all rows with color coding
+        for row in range(self.table.rowCount()):
+            status_item = QTableWidgetItem(status_text)
+            if status_text:
+                status_item.setForeground(QColor("#d32f2f"))
+                font = status_item.font()
+                font.setBold(True)
+                status_item.setFont(font)
+            self.table.setItem(row, 5, status_item)
         if violations:
             self.violations_label.setText("\n".join(violations))
             self.violations_label.show()
         else:
             self.violations_label.hide()
+        selected_date = self.calendar.selectedDate()
+        if not hasattr(self, 'month_violations'):
+            self.month_violations = {}
+        if violations:
+            self.month_violations[selected_date] = violations
+        elif selected_date in self.month_violations:
+            del self.month_violations[selected_date]
+        self.calendar.updateCells()
 
     def _show_context_menu(self, pos):
         """Show context menu for table"""
@@ -915,6 +990,9 @@ class HistoryWindow(QWidget):
 
             # Notes
             self.table.setItem(row, 4, QTableWidgetItem(entry.notes or ""))
+            
+            # Status
+            self.table.setItem(row, 5, QTableWidgetItem(""))
 
         # 2. Populate Summary Table
         sorted_totals = sorted(task_totals.items(), key=lambda x: x[1], reverse=True)
