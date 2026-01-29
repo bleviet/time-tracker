@@ -37,7 +37,6 @@ class SystemTrayApp:
     
     def __init__(self):
         self.app = QApplication(sys.argv)
-        self.app.setQuitOnLastWindowClosed(False)  # Keep running when windows close
         
         # Set application icon (for taskbar, etc.)
         app_icon = self._create_icon()
@@ -45,6 +44,9 @@ class SystemTrayApp:
         
         # Settings
         self.settings = get_settings()
+        self.tray_available = QSystemTrayIcon.isSystemTrayAvailable()
+        self.minimize_to_tray = self.settings.preferences.minimize_to_tray and self.tray_available
+        self.app.setQuitOnLastWindowClosed(not self.minimize_to_tray)
         
         # Services
         self.calendar = CalendarService(
@@ -71,11 +73,13 @@ class SystemTrayApp:
         self._connect_signals()
         
         # Setup UI
-        self.tray_icon = QSystemTrayIcon(self._create_icon(), self.app)
-        self.tray_icon.setToolTip("Time Tracker Ready")
-        self.tray_icon.activated.connect(self._on_tray_icon_activated)
-        self.setup_menu()
-        self.tray_icon.show()
+        self.tray_icon = None
+        if self.tray_available:
+            self.tray_icon = QSystemTrayIcon(self._create_icon(), self.app)
+            self.tray_icon.setToolTip("Time Tracker Ready")
+            self.tray_icon.activated.connect(self._on_tray_icon_activated)
+            self.setup_menu()
+            self.tray_icon.show()
         
         # Event loop for async operations
         self.loop = asyncio.new_event_loop()
@@ -120,20 +124,20 @@ class SystemTrayApp:
     
     def _on_target_reached(self, hours: float):
         """Show notification when daily target is reached"""
-        self.tray_icon.showMessage(
+        self._show_tray_message(
             "Target Reached!",
             f"Congratulations! You have reached your daily target of {hours} hours.",
             QSystemTrayIcon.Information,
-            10000 
+            10000
         )
         
     def _on_limit_reached(self, hours: float):
         """Show warning when daily limit is reached"""
-        self.tray_icon.showMessage(
+        self._show_tray_message(
             "Maximum Limit Reached!",
             f"Warning: You have reached the maximum daily limit of {hours} hours.\nPlease stop working.",
             QSystemTrayIcon.Warning,
-            15000 
+            15000
         )
     
     def _async_init(self):
@@ -149,8 +153,9 @@ class SystemTrayApp:
             self.setup_menu()
             
             # Create and show main window
-            self.main_window = MainWindow(self.timer, self.tasks)
-            self.main_window.closed.connect(self._on_main_window_closed)
+            self.main_window = MainWindow(self.timer, self.tasks, minimize_to_tray=self.minimize_to_tray)
+            if self.minimize_to_tray:
+                self.main_window.closed.connect(self._on_main_window_closed)
             self.main_window.show_history.connect(self._show_history_window)
             self.main_window.show()
             
@@ -161,6 +166,15 @@ class SystemTrayApp:
             
             # Check for holidays
             self.check_today()
+
+            if not self.tray_available:
+                QMessageBox.information(
+                    self.main_window,
+                    "System Tray Unavailable",
+                    "No system tray was detected. On GNOME Shell, install the "
+                    "'AppIndicator and KStatusNotifierItem Support' extension "
+                    "to enable tray icons."
+                )
             
             # Start system monitoring
             self.system_monitor.start_monitoring()
@@ -187,6 +201,8 @@ class SystemTrayApp:
     
     def setup_menu(self):
         """Setup the system tray context menu"""
+        if not self.tray_icon:
+            return
         menu = QMenu()
         
         # Show Main Window
@@ -253,7 +269,13 @@ class SystemTrayApp:
     
     def update_tooltip(self, text: str, seconds: int):
         """Update the tray icon tooltip with current time"""
-        self.tray_icon.setToolTip(text)
+        if self.tray_icon:
+            self.tray_icon.setToolTip(text)
+
+    def _show_tray_message(self, title: str, message: str, icon, duration: int):
+        """Show a tray notification if available"""
+        if self.tray_icon:
+            self.tray_icon.showMessage(title, message, icon, duration)
     
     def check_today(self):
         """Check if today is a holiday or weekend"""
@@ -266,7 +288,7 @@ class SystemTrayApp:
             else:
                 message = "It's the weekend. Time to relax!"
             
-            self.tray_icon.showMessage(
+            self._show_tray_message(
                 "Holiday Notice",
                 message,
                 QSystemTrayIcon.Information,
@@ -281,7 +303,7 @@ class SystemTrayApp:
         self.lock_time = datetime.datetime.now()
         self.timer.pause_task()
         
-        self.tray_icon.showMessage(
+        self._show_tray_message(
             "Paused",
             "Tracking paused (screen locked)",
             QSystemTrayIcon.Information,
@@ -318,7 +340,7 @@ class SystemTrayApp:
                 )
                 
                 if was_work:
-                    self.tray_icon.showMessage(
+                    self._show_tray_message(
                         "Time Added",
                         f"Added {elapsed_minutes:.1f} minutes to task",
                         QSystemTrayIcon.Information,
@@ -340,7 +362,7 @@ class SystemTrayApp:
     
     def _on_main_window_closed(self):
         """Handle main window close (minimize to tray)"""
-        self.tray_icon.showMessage(
+        self._show_tray_message(
             "Time Tracker",
             "Application minimized to tray. Click icon to restore.",
             QSystemTrayIcon.Information,
