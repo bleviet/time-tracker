@@ -108,6 +108,27 @@ class MainWindow(QMainWindow):
         
         layout.addWidget(self.task_input, stretch=3)
         
+        # Play/Pause Button
+        self.toggle_btn = QPushButton("▶")
+        self.toggle_btn.setFixedSize(30, 30)
+        self.toggle_btn.clicked.connect(self._toggle_tracking)
+        self.toggle_btn.setCursor(Qt.PointingHandCursor)
+        self.toggle_btn.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                border: none;
+                color: #4CAF50;  /* Green for Play */
+                font-size: 18px;
+                font-weight: bold;
+                border-radius: 15px;
+            }
+            QPushButton:hover {
+                background-color: rgba(76, 175, 80, 0.1);
+            }
+        """)
+        self.toggle_btn.setToolTip("Start Tracking")
+        layout.addWidget(self.toggle_btn)
+        
         # Separator line
         separator = QLabel("|")
         separator.setStyleSheet("color: rgba(0, 0, 0, 0.2); font-size: 14px;")
@@ -132,7 +153,7 @@ class MainWindow(QMainWindow):
         
         layout.addWidget(self.timer_display, stretch=2)
         # Minimize button
-        self.minimize_button = QPushButton("−")
+        self.minimize_button = QPushButton("▼")
         self.minimize_button.setFixedSize(30, 30)
         self.minimize_button.clicked.connect(self.hide)
         self.minimize_button.setStyleSheet("""
@@ -194,6 +215,14 @@ class MainWindow(QMainWindow):
         model = QStringListModel(task_names)
         self.completer.setModel(model)
     
+    def _toggle_tracking(self):
+        """Toggle between Play and Pause"""
+        if self.timer_service.is_tracking():
+            self._stop_current_task()
+        else:
+            # If stopped, try to start task from input
+            self._on_task_entered()
+
     def _on_task_entered(self):
         """Handle Enter key press in task input"""
         task_name = self.task_input.text().strip()
@@ -249,12 +278,46 @@ class MainWindow(QMainWindow):
         # Keep input editable for instant task switching
         self.task_input.setText(task_name)
         self.task_input.selectAll()  # Select all text for easy overwriting
+        
+        # Update styling for Pause state
+        self.toggle_btn.setText("⏸")
+        self.toggle_btn.setToolTip("Pause Tracking")
+        self.toggle_btn.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                border: none;
+                color: #FF9800;  /* Orange for Pause */
+                font-size: 18px;
+                font-weight: bold;
+                border-radius: 15px;
+            }
+            QPushButton:hover {
+                background-color: rgba(255, 152, 0, 0.1);
+            }
+        """)
     
     def _on_task_stopped(self, task_id: int, total_seconds: int):
         """Update UI when task stops"""
         self.task_input.clear()
         self.task_input.setPlaceholderText("Task name...")
         self.timer_display.setText("00:00:00")
+        
+        # Update styling for Play state
+        self.toggle_btn.setText("▶")
+        self.toggle_btn.setToolTip("Start Tracking")
+        self.toggle_btn.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                border: none;
+                color: #4CAF50;  /* Green for Play */
+                font-size: 18px;
+                font-weight: bold;
+                border-radius: 15px;
+            }
+            QPushButton:hover {
+                background-color: rgba(76, 175, 80, 0.1);
+            }
+        """)
     
     def refresh_tasks(self, tasks: List[Task]):
         """Refresh the task list (called when tasks are reloaded)"""
