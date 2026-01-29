@@ -75,10 +75,18 @@ The application displays a **modern, unified widget** at the **bottom right** of
     -   Autocomplete suggests existing tasks
     -   Press Enter to start/switch
 
-2.  **Timer Display** (Right) - Shows HH:MM:SS
+2.  **Play/Pause Button** (Middle)
+    -   **Play (▶)**: Green, starts tracking current task
+    -   **Pause (⏸)**: Orange, stops tracking
+
+3.  **Timer Display** (Right) - Shows HH:MM:SS
     -   Cumulative time across all sessions
     -   Bold blue numbers
     -   Updates every second
+
+4.  **Minimize Button** (Far Right)
+    -   Arrow Down (▼) icon
+    -   Hides widget to system tray
 
 **Widget Features:**
 - Modern rounded design with subtle transparency
@@ -86,7 +94,7 @@ The application displays a **modern, unified widget** at the **bottom right** of
 - Bottom right position (unobtrusive)
 - Drag anywhere to reposition
 - Right-click for options (Stop, Hide, Quit)
-- Minimizes to system tray
+- Minimizes to system tray (Restore with Ctrl+Shift+T)
 
 ### Starting & Switching Tasks
 
@@ -111,14 +119,14 @@ The application displays a **modern, unified widget** at the **bottom right** of
 
 ### Stopping Time Tracking
 
-**Only needed when completely done:**
-1.  Right-click widget → "Stop Tracking", OR
-2.  Right-click tray icon → "Stop Tracking"
+**Two ways to stop:**
+1.  Click the **Pause (⏸)** button on the widget
+2.  Right-click widget → "Stop Tracking"
 
 ### Widget Management
 
 - **Hide Widget**: 
-  - Click minimize button (−) on widget, OR
+  - Click minimize button (▼) on widget, OR
   - Press **Esc**, OR
   - Right-click → "Hide to Tray"
 - **Show Widget**: 
@@ -138,7 +146,9 @@ The application displays a **modern, unified widget** at the **bottom right** of
 
 1. Right-click the system tray icon → "Show History & Log"
 2. **View Entries**: Select a date in the calendar to view that day's log.
-3. **Daily Summary**: See cumulative totals per task.
+3. **Daily Summary**: See cumulative totals per task and Work Regulations status.
+   - **Resizable Layout**: Drag splitters to resize Calendar, Regulations, Task List, and Daily Summary.
+   - **Work Regulations**: View daily target progress and compliance warnings (10h limit, rest periods).
 4. **Edit/Delete**: Right-click any entry in the table to **Edit** or **Delete** it.
    - *Note: Deleting an entry permanently removes it and recalculates the daily total.*
 5. **Manual Entry**: Click "+ Add Manual Entry" to record offline work.

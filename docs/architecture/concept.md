@@ -181,12 +181,18 @@ When the program starts, it displays a modern, unified widget at the **bottom ri
    - Press Enter to start/switch tracking
    - **Always editable** - just type new task name and press Enter to switch
    
-2. **Separator** - Subtle vertical divider
+2. **Playback Controls (Middle):**
+   - **Play/Pause Button**: 
+     - ▶ (Play): Green, starts tracking
+     - ⏸ (Pause): Orange, stops tracking
    
 3. **Timer Display (Right Side):**
    - Shows cumulative time in HH:MM:SS format
    - Updates every second
    - Blue color for modern look
+   
+4. **Window Controls:**
+   - **Minimize (▼)**: Hides widget to system tray
 
 **Design Principles:**
 - **Modern & Unified:** Rounded borders, semi-transparent white background
@@ -195,7 +201,7 @@ When the program starts, it displays a modern, unified widget at the **bottom ri
 - **Bottom Right Position:** Unobtrusive, always accessible
 - **Integrated Look:** Subtle shadow and transparency blend with desktop
 - **Draggable:** Click and drag to reposition anywhere
-- **Right-Click Menu:** Stop tracking, hide to tray, or quit
+- **Right-Click Menu:** Context actions (Stop, History, Hide, Quit)
 - **Keyboard Shortcuts:** 
   - **Esc** - Hide widget to tray
   - **Ctrl+Shift+T** - Show widget from tray
@@ -203,10 +209,22 @@ When the program starts, it displays a modern, unified widget at the **bottom ri
 **Workflow:**
 1. Launch application → Compact widget appears at bottom right
 2. Type task name → Autocomplete suggests existing tasks
-3. Press Enter → Timer starts from cumulative time, task name selected for easy switching
-4. To switch: Just type new task name over current one and press Enter → Switches instantly
-5. Right-click → Hide to tray or stop tracking
-6. Double-click tray icon → Widget reappears
+3. Press Enter OR click Play (▶) → Timer starts
+4. To switch: Just type new task name and press Enter → Switches instantly
+5. To pause: Click Pause (⏸) button
+6. Right-click → Hide to tray or stop tracking
+7. Double-click tray icon or press Ctrl+Shift+T → Widget reappears
+
+#### **Monthly Overview (History Window)**
+
+The history window features a flexible, resizable 4-panel layout:
+- **Left Panel:** 
+  - Calendar with Month View (Top)
+  - Work Regulations & Compliance Settings (Bottom)
+- **Right Panel:**
+  - Daily Task List (Top)
+  - Daily Summary & Violations (Bottom)
+- **Splitters:** Allow resizing vertical and horizontal sections to customize the view.
 
 ### 7. Next Step
 
