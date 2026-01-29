@@ -6,13 +6,13 @@ from typing import List, Dict
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QCalendarWidget, QTableWidget,
     QTableWidgetItem, QPushButton, QLabel, QHeaderView, QMessageBox, QMenu,
-    QAbstractItemView
+    QAbstractItemView, QGroupBox, QCheckBox, QDoubleSpinBox
 )
 from PySide6.QtCore import Qt, QDate, Signal, QRect, QEvent
 from PySide6.QtGui import QColor, QPalette, QAction, QPainter, QTextCharFormat, QKeySequence, QShortcut
 
 from app.domain.models import Task, TimeEntry
-from app.infra.repository import TaskRepository, TimeEntryRepository
+from app.infra.repository import TaskRepository, TimeEntryRepository, UserRepository
 from app.ui.dialogs import ManualEntryDialog
 from app.ui.accounting_dialogs import AccountingManagementDialog
 from app.ui.task_dialogs import TaskManagementDialog
@@ -272,6 +272,7 @@ class HistoryWindow(QWidget):
 
         self._setup_ui()
         self._load_tasks()
+        self._load_regulations()
 
         self.undo_shortcut = QShortcut(QKeySequence("Ctrl+Z"), self)
         self.undo_shortcut.activated.connect(self._undo_last_change)
@@ -315,6 +316,54 @@ class HistoryWindow(QWidget):
 
         legend_layout.addStretch()
         left_layout.addLayout(legend_layout)
+
+        # Work Regulations Panel (Collapsible)
+        regulations_group = QGroupBox("Work Regulations")
+        regulations_group.setCheckable(False)
+        regulations_layout = QVBoxLayout(regulations_group)
+        regulations_layout.setSpacing(8)
+
+        # Daily Target
+        target_layout = QHBoxLayout()
+        target_layout.addWidget(QLabel("Daily Target:"))
+        self.spin_work_hours = QDoubleSpinBox()
+        self.spin_work_hours.setRange(1.0, 24.0) 
+        self.spin_work_hours.setSingleStep(0.5)
+        self.spin_work_hours.setSuffix(" h")
+        self.spin_work_hours.setMinimumWidth(80)
+        self.spin_work_hours.setValue(8.0)  # Default
+        self.spin_work_hours.valueChanged.connect(self._save_regulations)
+        target_layout.addWidget(self.spin_work_hours)
+        target_layout.addStretch()
+        regulations_layout.addLayout(target_layout)
+
+        # Compliance Checks
+        self.check_enable_compliance = QCheckBox("Enable German Compliance (10h limit)")
+        self.check_enable_compliance.setToolTip("Warns when daily hours exceed 10 hours")
+        self.check_enable_compliance.stateChanged.connect(self._save_regulations)
+        regulations_layout.addWidget(self.check_enable_compliance)
+
+        self.check_breaks = QCheckBox("Check Mandatory Breaks")  
+        self.check_breaks.setToolTip("Warn if >6h without 30m break")
+        self.check_breaks.stateChanged.connect(self._save_regulations)
+        regulations_layout.addWidget(self.check_breaks)
+
+        self.check_rest = QCheckBox("Check Rest Periods (11h)")
+        self.check_rest.setToolTip("Warn if <11h between work days")
+        self.check_rest.stateChanged.connect(self._save_regulations)
+        regulations_layout.addWidget(self.check_rest)
+
+        # Violations display
+        self.violations_label = QLabel()
+        self.violations_label.setStyleSheet("color: #d32f2f; font-weight: bold; padding: 5px;")
+        self.violations_label.setWordWrap(True)
+        self.violations_label.hide()
+        regulations_layout.addWidget(self.violations_label)
+
+        left_layout.addWidget(regulations_group)
+
+        # User repo for saving
+        self.user_repo = UserRepository()
 
         # Summary for selected day
         self.summary_header = QLabel("Daily Summary")
@@ -487,6 +536,49 @@ class HistoryWindow(QWidget):
             self.report_window.show()
         except Exception as e:
             QMessageBox.warning(self, "Error", f"Failed to open report wizard:\n{e}")
+
+    def _load_regulations(self):
+        """Load work regulations from preferences"""
+        try:
+            prefs = self.loop.run_until_complete(self.user_repo.get_preferences())
+            self.spin_work_hours.setValue(prefs.work_hours_per_day)
+            self.check_enable_compliance.setChecked(prefs.enable_german_compliance)
+            self.check_breaks.setChecked(prefs.check_breaks)
+            self.check_rest.setChecked(prefs.check_rest_periods)
+        except Exception as e:
+            print(f"Failed to load regulations: {e}")
+
+    def _save_regulations(self):
+        """Save work regulations to preferences"""
+        try:
+            prefs = self.loop.run_until_complete(self.user_repo.get_preferences())
+            prefs.work_hours_per_day = self.spin_work_hours.value()
+            prefs.enable_german_compliance = self.check_enable_compliance.isChecked()
+            prefs.check_breaks = self.check_breaks.isChecked()
+            prefs.check_rest_periods = self.check_rest.isChecked()
+            self.loop.run_until_complete(self.user_repo.update_preferences(prefs))
+            self._check_violations()
+        except Exception as e:
+            print(f"Failed to save regulations: {e}")
+
+    def _check_violations(self):
+        """Check for work regulation violations on current date"""
+        if not self.check_enable_compliance.isChecked():
+            self.violations_label.hide()
+            return
+        total_seconds = sum(entry.duration_seconds for entry in self.current_entries)
+        total_hours = total_seconds / 3600.0
+        violations = []
+        if total_hours > 10.0:
+            violations.append(f"⚠️ Exceeded 10h limit: {total_hours:.1f}h")
+        target = self.spin_work_hours.value()
+        if total_hours > target + 2.0:
+            violations.append(f"📊 {total_hours - target:.1f}h over daily target")
+        if violations:
+            self.violations_label.setText("\n".join(violations))
+            self.violations_label.show()
+        else:
+            self.violations_label.hide()
 
     def _show_context_menu(self, pos):
         """Show context menu for table"""
@@ -841,6 +933,7 @@ class HistoryWindow(QWidget):
         hours, remainder = divmod(day_total_seconds, 3600)
         minutes, seconds = divmod(remainder, 60)
         self.total_label.setText(f"Total: {hours:02d}:{minutes:02d}")
+        self._check_violations()
 
     def _open_manual_entry(self):
         """Open the dialog to add a manual entry"""
