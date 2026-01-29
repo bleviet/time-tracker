@@ -49,7 +49,8 @@ class SystemTrayApp:
             QMessageBox.critical(
                 None,
                 "System Tray Required",
-                "Time Tracker requires a system tray to run. On GNOME Shell, install the "
+                "Time Tracker requires a system tray implementation to run. Ensure your desktop "
+                "environment provides a status notifier service. On GNOME Shell, install the "
                 "'AppIndicator and KStatusNotifierItem Support' extension to enable tray icons."
             )
             sys.exit(1)
