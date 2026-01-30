@@ -271,7 +271,3 @@ The JSON backup file includes:
 - **Merge mode:** Imports data alongside existing records
 - **Warning:** Duplicates may occur if restoring to a populated database
 - **Validation:** Backup format is validated before restore
-
-### 8. Next Step
-
-Would you like me to generate a **Proof of Concept (POC) Python script** that sets up the PySide6 System Tray icon and implements the basic "Start/Stop" timer logic?
