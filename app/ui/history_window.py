@@ -6,7 +6,7 @@ from typing import List, Dict
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QCalendarWidget, QTableWidget,
     QTableWidgetItem, QPushButton, QLabel, QHeaderView, QMessageBox, QMenu,
-    QAbstractItemView, QGroupBox, QCheckBox, QDoubleSpinBox, QSplitter
+    QAbstractItemView, QGroupBox, QCheckBox, QDoubleSpinBox, QSplitter, QToolTip
 )
 from PySide6.QtCore import Qt, QDate, Signal, QRect, QEvent, QLocale
 from PySide6.QtGui import QColor, QPalette, QAction, QPainter, QTextCharFormat, QKeySequence, QShortcut
@@ -18,22 +18,26 @@ from app.ui.accounting_dialogs import AccountingManagementDialog
 from app.ui.task_dialogs import TaskManagementDialog
 from app.ui.report_window import ReportWindow
 from app.infra.config import get_settings
+from app.services.calendar_service import CalendarService
 
 
 class StatusCalendarWidget(QCalendarWidget):
     """
-    Custom calendar widget that visualizes day status (Work, Vacation, Sickness)
+    Custom calendar widget that visualizes day status (Work, Vacation, Sickness, Holiday)
     with color coding and supports right-click cycling through states.
+    Official German holidays are automatically marked based on the configured state.
     """
 
     STATE_WORK = "work"
     STATE_VACATION = "vacation"
     STATE_SICKNESS = "sickness"
+    STATE_HOLIDAY = "holiday"
 
     COLORS = {
         STATE_WORK: QColor("#ffffff"),         # White/Default
         STATE_VACATION: QColor("#90EE90"),     # Light Green
-        STATE_SICKNESS: QColor("#FFB6C1")      # Light Pink
+        STATE_SICKNESS: QColor("#FFB6C1"),     # Light Pink
+        STATE_HOLIDAY: QColor("#ADD8E6")       # Light Blue for official holidays
     }
 
     dateContextRequested = Signal(QDate)  # Right-click signal
@@ -41,6 +45,7 @@ class StatusCalendarWidget(QCalendarWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.status_data: Dict[QDate, str] = {}
+        self.holiday_names: Dict[QDate, str] = {}  # Store holiday names for tooltips
         self._formatted_dates = set()
         self.setGridVisible(True)
         self.setVerticalHeaderFormat(QCalendarWidget.NoVerticalHeader)
@@ -52,7 +57,7 @@ class StatusCalendarWidget(QCalendarWidget):
             view.viewport().installEventFilter(self)
 
     def eventFilter(self, obj, event):
-        """Filter events to catch right-clicks on calendar cells"""
+        """Filter events to catch right-clicks and tooltips on calendar cells"""
         if event.type() == QEvent.MouseButtonPress:
             if event.button() == Qt.RightButton:
                 view = self.findChild(QAbstractItemView)
@@ -64,6 +69,20 @@ class StatusCalendarWidget(QCalendarWidget):
                             self.dateContextRequested.emit(date)
                         return True  # Event handled
 
+        # Handle tooltip events for holidays
+        if event.type() == QEvent.ToolTip:
+            view = self.findChild(QAbstractItemView)
+            if view and obj == view.viewport():
+                index = view.indexAt(event.pos())
+                if index.isValid():
+                    date = self._get_date_from_index(index)
+                    if date.isValid() and date in self.holiday_names:
+                        holiday_name = self.holiday_names[date]
+                        QToolTip.showText(event.globalPos(), holiday_name, view)
+                        return True
+                QToolTip.hideText()
+                return True
+
         return super().eventFilter(obj, event)
 
     def _get_date_from_index(self, index):
@@ -74,24 +93,24 @@ class StatusCalendarWidget(QCalendarWidget):
 
         year = self.yearShown()
         month = self.monthShown()
-        
+
         first_day_of_month = QDate(year, month, 1)
-        
+
         # Get first day of week setting
         first_day_setting = self.firstDayOfWeek()
         if first_day_setting == 0:
             first_day_setting = QLocale.system().firstDayOfWeek()
-            
+
         # Calculate offset to the first cell (0,0)
         # diff is how many days FIRST DAY OF MONTH is ahead of FIRST COL
         # Ensure we treat first_day_setting as int (Qt.DayOfWeek enum)
         diff = first_day_of_month.dayOfWeek() - first_day_setting.value
         if diff < 0:
             diff += 7
-            
+
         # Start date of the grid (cell 0,0)
         start_date = first_day_of_month.addDays(-diff)
-        
+
         # Target date
         # The internal QTableView of QCalendarWidget has a header row at row 0 (Day names)
         # So the actual dates start at row 1. We must subtract 1 from the row index.
@@ -124,7 +143,7 @@ class StatusCalendarWidget(QCalendarWidget):
         """Override to paint cell backgrounds based on day status"""
         state = self.status_data.get(date, self.STATE_WORK)
 
-        # Paint background color for vacation/sickness
+        # Paint background color for vacation/sickness/holiday
         if state != self.STATE_WORK:
             painter.save()
             color = self.COLORS.get(state, self.COLORS[self.STATE_WORK])
@@ -133,7 +152,15 @@ class StatusCalendarWidget(QCalendarWidget):
 
         # Call parent to draw the date number
         super().paintCell(painter, rect, date)
-        
+
+        # Draw holiday flag icon if it's a holiday
+        if state == self.STATE_HOLIDAY:
+            painter.save()
+            painter.setPen(QColor("#1565c0"))
+            # Draw flag emoji in top-left corner to indicate official holiday
+            painter.drawText(rect.adjusted(2, 2, 0, 0), Qt.AlignTop | Qt.AlignLeft, "🏳")
+            painter.restore()
+
         # Draw violation warning icon if exists
         if hasattr(self, '_violations') and date in self._violations:
             painter.save()
@@ -141,6 +168,10 @@ class StatusCalendarWidget(QCalendarWidget):
             # Draw warning triangle in top-right corner
             painter.drawText(rect.adjusted(rect.width()-18, 2, 0, 0), Qt.AlignTop | Qt.AlignRight, "⚠")
             painter.restore()
+
+    def set_holiday_names(self, holiday_names: Dict[QDate, str]):
+        """Set holiday names for tooltip display"""
+        self.holiday_names = holiday_names
 
     def set_violations(self, violations: Dict[QDate, List[str]]):
         """Set violations data for display"""
@@ -297,6 +328,10 @@ class HistoryWindow(QWidget):
         self.settings = get_settings()
         self.undo_stack = []
 
+        # Initialize CalendarService for German holiday detection
+        german_state = getattr(self.settings, 'german_state', 'BY')
+        self.calendar_service = CalendarService(german_state=german_state)
+
         self.tasks: List[Task] = []
         self.current_entries: List[TimeEntry] = []
         self.month_violations: Dict[QDate, List[str]] = {}
@@ -313,15 +348,15 @@ class HistoryWindow(QWidget):
 
         # Left Panel: Calendar and Work Regulations with Splitter
         left_layout = QVBoxLayout()
-        
+
         #Create splitter for calendar and work regulations
         left_splitter = QSplitter(Qt.Vertical)
-        
+
         # Top widget: Calendar and Legend
         calendar_widget = QWidget()
         calendar_layout = QVBoxLayout(calendar_widget)
         calendar_layout.setContentsMargins(0, 0, 0, 0)
-        
+
         self.calendar = StatusCalendarWidget()
         self.calendar.setGridVisible(True)
         self.calendar.selectionChanged.connect(self._on_date_selected)
@@ -350,13 +385,21 @@ class HistoryWindow(QWidget):
         )
         legend_layout.addWidget(sickness_legend)
 
+        holiday_legend = QLabel("  🏳 Holiday  ")
+        holiday_legend.setStyleSheet(
+            "background-color: #ADD8E6; border: 1px solid #ccc; "
+            "padding: 4px 8px; border-radius: 4px; margin-right: 5px;"
+        )
+        holiday_legend.setToolTip("Official German holidays")
+        legend_layout.addWidget(holiday_legend)
+
         hint_label = QLabel("(Right-click date to cycle)")
         hint_label.setStyleSheet("color: #777; font-style: italic; font-size: 11px;")
         legend_layout.addWidget(hint_label)
 
         legend_layout.addStretch()
         calendar_layout.addLayout(legend_layout)
-        
+
         left_splitter.addWidget(calendar_widget)
 
         # Work Regulations Panel
@@ -383,7 +426,7 @@ class HistoryWindow(QWidget):
         target_layout = QHBoxLayout()
         target_layout.addWidget(QLabel("Daily Target:"))
         self.spin_work_hours = QDoubleSpinBox()
-        self.spin_work_hours.setRange(1.0, 24.0) 
+        self.spin_work_hours.setRange(1.0, 24.0)
         self.spin_work_hours.setSingleStep(0.5)
         self.spin_work_hours.setSuffix(" h")
         self.spin_work_hours.setMinimumWidth(80)
@@ -411,14 +454,14 @@ class HistoryWindow(QWidget):
                 border-color: #1976d2;
             }
         """
-        
+
         self.check_enable_compliance = QCheckBox("Enable German Compliance (10h limit)")
         self.check_enable_compliance.setToolTip("Warns when daily hours exceed 10 hours")
         self.check_enable_compliance.setStyleSheet(checkbox_style)
         self.check_enable_compliance.stateChanged.connect(self._save_regulations)
         regulations_layout.addWidget(self.check_enable_compliance)
 
-        self.check_breaks = QCheckBox("Check Mandatory Breaks")  
+        self.check_breaks = QCheckBox("Check Mandatory Breaks")
         self.check_breaks.setToolTip("Warn if >6h without 30m break")
         self.check_breaks.setStyleSheet(checkbox_style)
         self.check_breaks.stateChanged.connect(self._save_regulations)
@@ -439,12 +482,12 @@ class HistoryWindow(QWidget):
         regulations_layout.addStretch()  # Push content to top
 
         left_splitter.addWidget(regulations_group)
-        
+
         # Set initial splitter sizes
         left_splitter.setSizes([400, 300])
         left_splitter.setStretchFactor(0, 2)
         left_splitter.setStretchFactor(1, 1)
-        
+
         left_layout.addWidget(left_splitter)
 
         # User repo for saving
@@ -462,12 +505,12 @@ class HistoryWindow(QWidget):
 
         # Create splitter for task table and daily summary
         splitter = QSplitter(Qt.Vertical)
-        
+
         # Top widget: Task entries table
         task_table_widget = QWidget()
         task_table_layout = QVBoxLayout(task_table_widget)
         task_table_layout.setContentsMargins(0, 0, 0, 0)
-        
+
         # Table
         self.table = QTableWidget()
         self.table.setColumnCount(5)
@@ -489,7 +532,7 @@ class HistoryWindow(QWidget):
         header.setSectionResizeMode(4, QHeaderView.Stretch) # Notes
 
         task_table_layout.addWidget(self.table)
-        
+
         # Add Manual Entry Button (below task table)
         self.add_btn = QPushButton("+ Add Manual Entry")
         self.add_btn.clicked.connect(self._open_manual_entry)
@@ -513,14 +556,14 @@ class HistoryWindow(QWidget):
             }
         """)
         task_table_layout.addWidget(self.add_btn)
-        
+
         splitter.addWidget(task_table_widget)
 
         # Bottom widget: Daily Summary
         summary_widget = QWidget()
         summary_layout = QVBoxLayout(summary_widget)
         summary_layout.setContentsMargins(0, 0, 0, 0)
-        
+
         # Daily Summary Section
         self.summary_header = QLabel("Daily Summary")
         self.summary_header.setStyleSheet("font-size: 14px; font-weight: bold; margin-bottom: 5px;")
@@ -540,12 +583,12 @@ class HistoryWindow(QWidget):
 
         summary_layout.addWidget(self.summary_table)
         splitter.addWidget(summary_widget)
-        
+
         # Set initial splitter sizes (60% task table, 40% summary)
         splitter.setSizes([600, 400])
         splitter.setStretchFactor(0, 3)  # Task table gets more stretch priority
         splitter.setStretchFactor(1, 2)  # Summary gets less
-        
+
         right_layout.addWidget(splitter)
 
         # Buttons
@@ -587,7 +630,7 @@ class HistoryWindow(QWidget):
 
         btn_layout.addWidget(self.accounting_btn)
         btn_layout.addWidget(self.tasks_btn)
-        
+
         self.report_btn = QPushButton("📊 Generate Report")
         self.report_btn.clicked.connect(self._generate_report)
         self.report_btn.setStyleSheet("""
@@ -608,7 +651,7 @@ class HistoryWindow(QWidget):
             }
         """)
         btn_layout.addWidget(self.report_btn)
-        
+
         btn_layout.addStretch()
 
         right_layout.addLayout(btn_layout)
@@ -631,7 +674,7 @@ class HistoryWindow(QWidget):
         try:
             # Get current month/year from calendar
             current_date = self.calendar.selectedDate()
-            
+
             # Create report window and set it to the current month
             self.report_window = ReportWindow()
             self.report_window._set_period(current_date.year(), current_date.month())
@@ -674,17 +717,17 @@ class HistoryWindow(QWidget):
             else:
                 duration = entry.duration_seconds
             total_seconds += duration
-        
+
         total_hours = total_seconds / 3600.0
         violations = []
-        
+
         # Check 10h limit - will color Total row RED if exceeded
         limit_exceeded = False
         if self.check_enable_compliance.isChecked():
             if total_hours > 10.0:
                 violations.append(f"⚠️ Exceeded 10h limit: {total_hours:.1f}h worked")
                 limit_exceeded = True
-        
+
         # Check daily target - will add Overtime row if exceeded
         target = self.spin_work_hours.value()
         overtime_seconds = 0
@@ -693,7 +736,7 @@ class HistoryWindow(QWidget):
             overtime_seconds = int((total_hours - target) * 3600)
             if over_hours > 2.0:  # Only warn if significantly over
                 violations.append(f"📊 {over_hours:.1f}h over daily target ({target:.1f}h)")
-        
+
         # Remove existing Overtime row FIRST (to prevent duplication)
         row_count = self.summary_table.rowCount()
         if row_count > 1:
@@ -701,15 +744,15 @@ class HistoryWindow(QWidget):
             if last_row_item and last_row_item.text() == "Overtime":
                 self.summary_table.removeRow(row_count - 1)
                 row_count -= 1  # Update count after removal
-        
+
         # Color the Total row RED if 10h limit exceeded
         # Now row_count-1 is guaranteed to be Total row
         if row_count > 0:
             total_row = row_count - 1
-            
+
             total_name_item = self.summary_table.item(total_row, 0)
             total_dur_item = self.summary_table.item(total_row, 1)
-            
+
             if total_name_item and total_dur_item:
                 if limit_exceeded:
                     # Mark Total RED for 10h limit violation
@@ -719,13 +762,13 @@ class HistoryWindow(QWidget):
                     # Normal blue color
                     total_name_item.setForeground(QColor("#1976d2"))
                     total_dur_item.setForeground(QColor("#1976d2"))
-        
+
         # Add Overtime row if target exceeded (only info, not a violation warning)
         if overtime_seconds > 0:
             # Add an extra row for overtime
             current_rows = self.summary_table.rowCount()
             self.summary_table.setRowCount(current_rows + 1)
-            
+
             overtime_row = current_rows
             overtime_name_item = QTableWidgetItem("Overtime")
             overtime_name_item.setForeground(QColor("#f57c00"))  # Orange color for info
@@ -733,11 +776,11 @@ class HistoryWindow(QWidget):
             font.setItalic(True)
             overtime_name_item.setFont(font)
             self.summary_table.setItem(overtime_row, 0, overtime_name_item)
-            
+
             hours, remainder = divmod(overtime_seconds, 3600)
             minutes, seconds = divmod(remainder, 60)
             overtime_dur_str = f"+{hours:02d}:{minutes:02d}"
-            
+
             overtime_dur_item = QTableWidgetItem(overtime_dur_str)
             overtime_dur_item.setForeground(QColor("#f57c00"))
             overtime_dur_item.setFont(font)
@@ -749,17 +792,17 @@ class HistoryWindow(QWidget):
             self.violations_label.show()
         else:
             self.violations_label.hide()
-            
+
         # Store violation for this date for calendar display
         selected_date = self.calendar.selectedDate()
         if not hasattr(self, 'month_violations'):
             self.month_violations = {}
-        
+
         if violations:
             self.month_violations[selected_date] = violations
         elif selected_date in self.month_violations:
             del self.month_violations[selected_date]
-        
+
         # Pass violations data to calendar
         self.calendar.set_violations(self.month_violations)
 
@@ -841,12 +884,24 @@ class HistoryWindow(QWidget):
         self.loop.run_until_complete(self._refresh_month_status(year, month))
 
     async def _refresh_month_status(self, year, month):
-        """Load status (Work/Vacation/Sickness) for the whole month"""
+        """Load status (Work/Vacation/Sickness/Holiday) for the whole month"""
         start_date = datetime(year, month, 1)
         last_day = calendar.monthrange(year, month)[1]
         end_date = datetime(year, month, last_day, 23, 59, 59)
 
         status_data = {}
+        holiday_names = {}
+
+        # First, mark all official German holidays for the month
+        current_date = start_date.date()
+        while current_date <= end_date.date():
+            if self.calendar_service.is_holiday(current_date):
+                qdate = QDate(current_date.year, current_date.month, current_date.day)
+                status_data[qdate] = StatusCalendarWidget.STATE_HOLIDAY
+                holiday_name = self.calendar_service.get_holiday_name(current_date)
+                if holiday_name:
+                    holiday_names[qdate] = holiday_name
+            current_date += timedelta(days=1)
 
         # Fetch all entries for the month
         all_entries = []
@@ -855,6 +910,7 @@ class HistoryWindow(QWidget):
             all_entries.extend(entries)
 
         # Process entries and determine day status
+        # Priority: Sickness > Vacation > Holiday > Work
         for entry in all_entries:
             qdate = QDate(entry.start_time.year, entry.start_time.month, entry.start_time.day)
 
@@ -868,15 +924,18 @@ class HistoryWindow(QWidget):
             elif task_name == "sickness":
                 new_state = StatusCalendarWidget.STATE_SICKNESS
 
-            # Priority: Sickness > Vacation > Work
+            # Priority: Sickness > Vacation > Holiday > Work
             current = status_data.get(qdate, StatusCalendarWidget.STATE_WORK)
             if current == StatusCalendarWidget.STATE_SICKNESS:
                 continue  # Keep Sickness (highest priority)
             if current == StatusCalendarWidget.STATE_VACATION and new_state != StatusCalendarWidget.STATE_SICKNESS:
                 continue  # Keep Vacation unless new is Sickness
+            if current == StatusCalendarWidget.STATE_HOLIDAY and new_state == StatusCalendarWidget.STATE_WORK:
+                continue  # Keep Holiday unless user entry overrides
 
             status_data[qdate] = new_state
 
+        self.calendar.set_holiday_names(holiday_names)
         self.calendar.set_status_data(status_data)
 
     def _cycle_day_status(self, qdate: QDate):
@@ -1115,7 +1174,7 @@ class HistoryWindow(QWidget):
 
         # 3. Add Total as last row in summary table
         self.summary_table.setRowCount(len(sorted_totals) + 1)  # +1 for total row
-        
+
         total_row = len(sorted_totals)
         total_name_item = QTableWidgetItem("Total")
         total_name_item.setForeground(QColor("#1976d2"))
@@ -1123,16 +1182,16 @@ class HistoryWindow(QWidget):
         font.setBold(True)
         total_name_item.setFont(font)
         self.summary_table.setItem(total_row, 0, total_name_item)
-        
+
         hours, remainder = divmod(day_total_seconds, 3600)
         minutes, seconds = divmod(remainder, 60)
         total_dur_str = f"{hours:02d}:{minutes:02d}"
-        
+
         total_dur_item = QTableWidgetItem(total_dur_str)
         total_dur_item.setForeground(QColor("#1976d2"))
         total_dur_item.setFont(font)
         self.summary_table.setItem(total_row, 1, total_dur_item)
-        
+
         self._check_violations()
 
     def _open_manual_entry(self):
