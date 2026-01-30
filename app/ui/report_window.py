@@ -350,7 +350,7 @@ class ReportWindow(QDialog):
         """Load tasks and configs asynchronously"""
         repo = TaskRepository()
         self.tasks = await repo.get_all_active()
-        
+
         # Load persisted settings
         self._load_settings()
 
@@ -362,7 +362,7 @@ class ReportWindow(QDialog):
         try:
             with open(self.report_settings_path, 'r', encoding='utf-8') as f:
                 data = yaml.safe_load(f) or {}
-            
+
             # Load History for current period
             self.report_history = data.get('history', {})
 
@@ -412,16 +412,19 @@ class ReportWindow(QDialog):
         try:
             template_type = self.template_combo.currentText()
 
+            # Get german_state from settings for holiday detection
+            german_state = getattr(self.settings, 'german_state', 'BY')
+
             # Simplified logic: Always use (or Default to) Accounting Matrix Service for "Monthly Report"
             # as requested by user to replace "Detailed CSV" and remove "Matrix Report"
             if template_type == "Monthly Report":
                 from app.services.accounting_matrix_service import AccountingMatrixService
-                service = AccountingMatrixService()
+                service = AccountingMatrixService(german_state=german_state)
                 content = await service.generate_report(config)
             else:
                 # Fallback purely for safety if somehow old value persists, but simpler to just default
                  from app.services.accounting_matrix_service import AccountingMatrixService
-                 service = AccountingMatrixService()
+                 service = AccountingMatrixService(german_state=german_state)
                  content = await service.generate_report(config)
 
             path = Path(config.output_path)

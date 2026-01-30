@@ -939,7 +939,29 @@ class HistoryWindow(QWidget):
         self.calendar.set_status_data(status_data)
 
     def _cycle_day_status(self, qdate: QDate):
-        """Cycle status: Work -> Vacation -> Sickness -> Work"""
+        """Cycle status: Work -> Vacation -> Sickness -> Work
+
+        Note: Holidays and weekends cannot be cycled to vacation/sickness,
+        but users can still manually add work entries for occasional weekend work.
+        """
+        # Convert QDate to Python date for checking
+        py_date = qdate.toPython()
+
+        # Check if this is a holiday or weekend - don't allow cycling
+        is_holiday = self.calendar_service.is_holiday(py_date)
+        is_weekend = self.calendar_service.is_weekend(py_date)
+
+        if is_holiday or is_weekend:
+            day_type = "a holiday" if is_holiday else "a weekend"
+            holiday_name = self.calendar_service.get_holiday_name(py_date) if is_holiday else ""
+            msg = f"This date is {day_type}"
+            if holiday_name:
+                msg += f" ({holiday_name})"
+            msg += ".\n\nVacation/Sickness status cannot be set for holidays or weekends.\n"
+            msg += "You can still add manual work entries if needed."
+            QMessageBox.information(self, "Cannot Change Status", msg)
+            return
+
         # Get current status
         current_status = self.calendar.status_data.get(qdate, StatusCalendarWidget.STATE_WORK)
 
