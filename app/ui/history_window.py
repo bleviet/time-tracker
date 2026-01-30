@@ -1217,7 +1217,28 @@ class HistoryWindow(QWidget):
         self._check_violations()
 
     def _open_manual_entry(self):
-        """Open the dialog to add a manual entry"""
+        """Open the dialog to add a manual entry
+
+        Note: Work entries are not allowed on holidays and Sundays.
+        Saturday work is permitted for occasional overtime.
+        """
+        # Check if selected date is a holiday or Sunday
+        selected_qdate = self.calendar.selectedDate()
+        py_date = selected_qdate.toPython()
+
+        is_holiday = self.calendar_service.is_holiday(py_date)
+        is_sunday = py_date.weekday() == 6  # Sunday = 6
+
+        if is_holiday or is_sunday:
+            day_type = "a holiday" if is_holiday else "Sunday"
+            holiday_name = self.calendar_service.get_holiday_name(py_date) if is_holiday else ""
+            msg = f"This date is {day_type}"
+            if holiday_name:
+                msg += f" ({holiday_name})"
+            msg += ".\n\nWork entries are not allowed on holidays and Sundays."
+            QMessageBox.warning(self, "Cannot Add Entry", msg)
+            return
+
         dialog = ManualEntryDialog(self.tasks, self)
 
         # Set date to currently selected date
@@ -1233,6 +1254,16 @@ class HistoryWindow(QWidget):
 
     async def _create_manual_entry(self, data):
         task_id = data['task_id']
+
+        # Validate date - no work on holidays or Sundays
+        start = data['start_time']
+        entry_date = start.date()
+        is_holiday = self.calendar_service.is_holiday(entry_date)
+        is_sunday = entry_date.weekday() == 6
+
+        if is_holiday or is_sunday:
+            day_type = "a holiday" if is_holiday else "Sunday"
+            raise ValueError(f"Work entries are not allowed on {day_type}.")
 
         # If new task name (task_id is None), create task first
         if task_id is None:
@@ -1271,6 +1302,16 @@ class HistoryWindow(QWidget):
 
     async def _update_entry(self, entry: TimeEntry, data: dict):
         """Update existing entry with new data"""
+        # Validate date - no work on holidays or Sundays
+        start = data['start_time']
+        entry_date = start.date()
+        is_holiday = self.calendar_service.is_holiday(entry_date)
+        is_sunday = entry_date.weekday() == 6
+
+        if is_holiday or is_sunday:
+            day_type = "a holiday" if is_holiday else "Sunday"
+            raise ValueError(f"Work entries are not allowed on {day_type}.")
+
         task_id = data['task_id']
 
         # Handle new task creation if needed
