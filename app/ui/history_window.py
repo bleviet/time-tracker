@@ -864,6 +864,10 @@ class HistoryWindow(QWidget):
             except Exception as e:
                 QMessageBox.critical(self, "Error", f"Failed to delete entry: {e}")
 
+    def refresh_data(self):
+        """Public method to refresh all data (called after backup restore)"""
+        self._load_tasks()
+
     def _load_tasks(self):
         """Load tasks for sorting/displaying and for the manual entry dialog"""
         try:

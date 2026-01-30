@@ -128,6 +128,16 @@ class AccountingRepository:
             await session.commit()
             return accounting
 
+    async def delete_all(self) -> int:
+        """Delete all accounting profiles. Returns count of deleted rows."""
+        from sqlalchemy import delete
+        session = await self._get_session()
+        async with session:
+            result = await session.execute(delete(AccountingModel))
+            await session.commit()
+            return result.rowcount
+
+
 class TaskRepository:
     """
     Handles all Task-related database operations.
@@ -209,6 +219,15 @@ class TaskRepository:
                 .values(is_active=False, archived_at=datetime.now())
             )
             await session.commit()
+
+    async def delete_all(self) -> int:
+        """Delete all tasks. Returns count of deleted rows."""
+        from sqlalchemy import delete
+        session = await self._get_session()
+        async with session:
+            result = await session.execute(delete(TaskModel))
+            await session.commit()
+            return result.rowcount
 
 
 class TimeEntryRepository:
@@ -325,15 +344,24 @@ class TimeEntryRepository:
             )
             await session.commit()
 
+    async def delete_all(self) -> int:
+        """Delete all time entries. Returns count of deleted rows."""
+        from sqlalchemy import delete
+        session = await self._get_session()
+        async with session:
+            result = await session.execute(delete(TimeEntryModel))
+            await session.commit()
+            return result.rowcount
+
     async def has_overlap(self, start_time: datetime, end_time: datetime, ignore_id: Optional[int] = None) -> bool:
         """
         Check if there are any existing entries that overlap with the given time range.
-        
+
         Args:
             start_time: Start of the proposed entry
             end_time: End of the proposed entry
             ignore_id: Optional ID to exclude from check (for updates)
-            
+
         Returns:
             True if overlap exists, False otherwise
         """

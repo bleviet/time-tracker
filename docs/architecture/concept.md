@@ -226,6 +226,52 @@ The history window features a flexible, resizable 4-panel layout:
   - Daily Summary & Violations (Bottom)
 - **Splitters:** Allow resizing vertical and horizontal sections to customize the view.
 
-### 7. Next Step
+### 7. Database Backup & Restore
+
+#### **Why JSON for Backups?**
+- **Human-readable:** Users can inspect and manually edit backup files if needed
+- **Cross-platform:** Works identically on Windows, Linux, and macOS
+- **Version-controllable:** Backups can be tracked in Git if desired
+- **Partial restore:** Individual items can be extracted and restored
+
+#### **Backup Strategy**
+
+**Automatic Backups:**
+- Configurable frequency: Daily, every 3 days, weekly, bi-weekly, or monthly
+- Automatic cleanup: Retains a configurable number of recent backups (default: 5)
+- Scheduled check: Runs at application startup
+
+**Manual Backups:**
+- On-demand backup creation from Settings dialog
+- File browser for selecting restore files
+- List view of available backups with date and size
+
+**Backup Naming Convention:**
+```
+timetracker_backup_YYYY-MM-DD_HHMMSS.json
+```
+
+Example: `timetracker_backup_2025-07-14_093045.json`
+
+**Default Backup Location:**
+- Windows: `%APPDATA%\TimeTracker\backups\`
+- Linux/macOS: `~/.local/share/timetracker/backups/`
+- Custom directory: User-configurable in Settings
+
+#### **Backup Contents**
+
+The JSON backup file includes:
+1. **Metadata:** Version, creation timestamp, app name
+2. **Accounting Profiles:** Name, attributes, active status
+3. **Tasks:** Name, description, accounting association
+4. **Time Entries:** Start/end times, duration, notes
+5. **User Preferences:** All application settings
+
+#### **Restore Behavior**
+- **Merge mode:** Imports data alongside existing records
+- **Warning:** Duplicates may occur if restoring to a populated database
+- **Validation:** Backup format is validated before restore
+
+### 8. Next Step
 
 Would you like me to generate a **Proof of Concept (POC) Python script** that sets up the PySide6 System Tray icon and implements the basic "Start/Stop" timer logic?
