@@ -116,15 +116,16 @@ class AccountingRepository:
         """Update an existing accounting profile"""
         session = await self._get_session()
         async with session:
-            await session.execute(
-                update(AccountingModel)
-                .where(AccountingModel.id == accounting.id)
-                .values(
-                    name=accounting.name,
-                    attributes=accounting.attributes,
-                    is_active=accounting.is_active
-                )
+            # Use ORM fetch-modify-commit to ensure JSON serialization works correctly
+            result = await session.execute(
+                select(AccountingModel).where(AccountingModel.id == accounting.id)
             )
+            model = result.scalar_one()
+            
+            model.name = accounting.name
+            model.attributes = accounting.attributes
+            model.is_active = accounting.is_active
+            
             await session.commit()
             return accounting
 

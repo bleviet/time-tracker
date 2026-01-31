@@ -198,7 +198,58 @@ TRANSLATIONS = {
         # Actions
         "action.edit": "Edit",
         "action.delete": "Delete",
+        "action.archive": "Archive",
+        "action.add": "Add",
+        "action.save": "Save",
+        "action.cancel": "Cancel",
+        "action.close": "Close",
         "error": "Error",
+
+        # Task Management
+        "task_mgmt.title": "Manage Tasks",
+        "task_mgmt.header_name": "Name",
+        "task_mgmt.header_accounting": "Accounting",
+        "task_mgmt.header_active": "Active",
+        "task_mgmt.active": "Active",
+        "task_mgmt.archived": "Archived",
+        "task_mgmt.btn_edit": "Edit Task",
+        "task_mgmt.confirm_archive_title": "Confirm Archive",
+        "task_mgmt.confirm_archive_msg": "Are you sure you want to archive '{name}'?",
+        "task_mgmt.load_error": "Failed to load tasks: {error}",
+        "task_mgmt.update_error": "Failed to update task: {error}",
+        "task_mgmt.archive_error": "Failed to archive task: {error}",
+
+        # Accounting Management
+        "acc_mgmt.title": "Manage Accounting",
+        "acc_mgmt.btn_add_profile": "Add Profile",
+        "acc_mgmt.btn_edit_profile": "Edit Profile",
+        "acc_mgmt.btn_del_profile": "Delete Profile",
+        "acc_mgmt.btn_columns": "Column Settings",
+        "acc_mgmt.header_name": "Name",
+        "acc_mgmt.confirm_del_title": "Confirm Delete",
+        "acc_mgmt.confirm_del_msg": "Delete profile '{name}'?",
+        "acc_mgmt.load_error": "Failed to load data: {error}",
+        "acc_mgmt.create_error": "Failed to create profile: {error}",
+        "acc_mgmt.update_error": "Failed to update profile: {error}",
+        "acc_mgmt.delete_error": "Failed to delete profile: {error}",
+
+        # Accounting Settings Dialog
+        "acc_settings.title": "Accounting Settings",
+        "acc_settings.help_text": "Define the columns for your accounting structure (e.g. 'Cost Center', 'Project ID').",
+        "acc_settings.btn_add": "Add Column",
+        "acc_settings.btn_remove": "Remove Selected",
+        "acc_settings.btn_save_close": "Save & Close",
+        "acc_settings.new_col_title": "New Column",
+        "acc_settings.new_col_msg": "Column Name:",
+        "acc_settings.error_exists": "Column already exists.",
+        "acc_settings.save_error": "Failed to save settings: {error}",
+        "acc_settings.load_error": "Failed to load settings: {error}",
+
+        # Accounting Edit Dialog
+        "acc_edit.title_new": "New Accounting Profile",
+        "acc_edit.title_edit": "Edit Accounting Profile",
+        "acc_edit.label_name": "Name (Primary ID):",
+        "acc_edit.error_name_req": "Name is required.",
 
         # Missing History & Status
         "history.legend": "Legend:",
@@ -260,8 +311,8 @@ TRANSLATIONS = {
 
         # History window
         "history.title": "Monatsübersicht",
-        "history.add_entry": "+ Manueller Eintrag",
-        "history.manage_accounting": "Kostenstellen verwalten",
+        "history.add_entry": "Manueller Eintrag",
+        "history.manage_accounting": "Kontierung verwalten",
         "history.manage_tasks": "Aufgaben verwalten",
         "history.generate_report": "Bericht erstellen",
         "history.task": "Aufgabe",
@@ -365,7 +416,7 @@ TRANSLATIONS = {
         # Dialogs - Task Edit
         "task_edit.title": "Aufgabe bearbeiten",
         "task_edit.name": "Name:",
-        "task_edit.accounting": "Kostenstelle:",
+        "task_edit.accounting": "Kontierung:",
         "task_edit.none": "Keine",
 
         # Dialogs - Manual Entry
@@ -400,14 +451,14 @@ TRANSLATIONS = {
 
         # Report Content
         "report.col_task": "Aufgabenname",
-        "report.col_profile": "Kostenstelle",
+        "report.col_profile": "Kontierung",
         "report.col_total": "Gesamtstunden",
         "report.row_total": "Gesamtarbeit",
         "report.row_target": "Tagesziel",
         "report.row_overtime": "Überstunden",
         "report.row_compliance": "Regelverstöße",
         "report.row_info": "Tagesinfo",
-        "report.unassigned_title": "Aufgaben ohne Kostenstelle (nicht in Gesamtsumme enthalten)",
+        "report.unassigned_title": "Aufgaben ohne Kontierung (nicht in Gesamtsumme enthalten)",
 
         # Notifications
         "notify.backup_complete": "Sicherung abgeschlossen",
@@ -426,7 +477,58 @@ TRANSLATIONS = {
         # Actions
         "action.edit": "Bearbeiten",
         "action.delete": "Löschen",
+        "action.archive": "Archivieren",
+        "action.add": "Hinzufügen",
+        "action.save": "Speichern",
+        "action.cancel": "Abbrechen",
+        "action.close": "Schließen",
         "error": "Fehler",
+
+        # Task Management
+        "task_mgmt.title": "Aufgaben verwalten",
+        "task_mgmt.header_name": "Name",
+        "task_mgmt.header_accounting": "Kontierung",
+        "task_mgmt.header_active": "Aktiv",
+        "task_mgmt.active": "Aktiv",
+        "task_mgmt.archived": "Archiviert",
+        "task_mgmt.btn_edit": "Aufgabe bearbeiten",
+        "task_mgmt.confirm_archive_title": "Archivierung bestätigen",
+        "task_mgmt.confirm_archive_msg": "Möchten Sie '{name}' wirklich archivieren?",
+        "task_mgmt.load_error": "Aufgaben konnten nicht geladen werden: {error}",
+        "task_mgmt.update_error": "Aufgabe konnte nicht aktualisiert werden: {error}",
+        "task_mgmt.archive_error": "Aufgabe konnte nicht archiviert werden: {error}",
+
+        # Accounting Management
+        "acc_mgmt.title": "Kontierung verwalten",
+        "acc_mgmt.btn_add_profile": "Profil hinzufügen",
+        "acc_mgmt.btn_edit_profile": "Profil bearbeiten",
+        "acc_mgmt.btn_del_profile": "Profil löschen",
+        "acc_mgmt.btn_columns": "Spalteneinstellungen",
+        "acc_mgmt.header_name": "Name",
+        "acc_mgmt.confirm_del_title": "Löschen bestätigen",
+        "acc_mgmt.confirm_del_msg": "Profil '{name}' löschen?",
+        "acc_mgmt.load_error": "Daten konnten nicht geladen werden: {error}",
+        "acc_mgmt.create_error": "Profil konnte nicht erstellt werden: {error}",
+        "acc_mgmt.update_error": "Profil konnte nicht aktualisiert werden: {error}",
+        "acc_mgmt.delete_error": "Profil konnte nicht gelöscht werden: {error}",
+
+        # Accounting Settings Dialog
+        "acc_settings.title": "Kontierungseinstellungen",
+        "acc_settings.help_text": "Definieren Sie die Spalten für Ihre Kontierungsstruktur (z.B. 'Kostenstelle', 'Auftragsnummer').",
+        "acc_settings.btn_add": "Spalte hinzufügen",
+        "acc_settings.btn_remove": "Ausgewählte entfernen",
+        "acc_settings.btn_save_close": "Speichern & Schließen",
+        "acc_settings.new_col_title": "Neue Spalte",
+        "acc_settings.new_col_msg": "Spaltenname:",
+        "acc_settings.error_exists": "Spalte existiert bereits.",
+        "acc_settings.save_error": "Einstellungen konnten nicht gespeichert werden: {error}",
+        "acc_settings.load_error": "Einstellungen konnten nicht geladen werden: {error}",
+
+        # Accounting Edit Dialog
+        "acc_edit.title_new": "Neues Profil",
+        "acc_edit.title_edit": "Profil bearbeiten",
+        "acc_edit.label_name": "Name (Primär-ID):",
+        "acc_edit.error_name_req": "Name ist erforderlich.",
 
         # Missing History & Status
         "history.legend": "Legende:",

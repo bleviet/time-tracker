@@ -141,6 +141,20 @@ The application displays a **modern, unified widget** at the **bottom right** of
 - **Move Widget**: Click and drag anywhere on the widget
 - **Quit**: Right-click → "Quit"
 
+### Task Management (Archiving)
+
+You can manage your tasks via the **Manage Tasks** dialog (accessible from the History window or Settings).
+
+**Archiving vs Deleting:**
+- **Archiving** "retires" a completed task. It hides it from your daily selection lists but **preserves all history** for valid reports.
+- **Deleting** creates data inconsistencies and is generally discouraged.
+
+**To Archive a Task:**
+1. Open **Manage Tasks**.
+2. Find the task in the list.
+3. Change its status from **Active** to **Archived** in the dropdown.
+4. The task will no longer appear in autocomplete but its history remains safe.
+
 ### Keyboard Shortcuts
 
 - **Esc** - Hide widget to tray
