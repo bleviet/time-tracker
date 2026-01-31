@@ -428,7 +428,7 @@ class ReportWindow(QDialog):
 
             path = Path(config.output_path)
             path.parent.mkdir(parents=True, exist_ok=True)
-            with open(path, 'w', encoding='utf-8') as f:
+            with open(path, 'w', encoding='utf-8-sig') as f:
                 f.write(content)
 
             self.status_label.setText(tr("report.done"))
