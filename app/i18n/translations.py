@@ -178,6 +178,7 @@ TRANSLATIONS = {
         "report.row_target": "Daily Target",
         "report.row_overtime": "Overtime",
         "report.row_compliance": "Compliance Notes",
+        "report.row_info": "Day Info",
         "report.unassigned_title": "Tasks without Accounting (not included in totals above)",
 
         # Notifications
@@ -405,6 +406,7 @@ TRANSLATIONS = {
         "report.row_target": "Tagesziel",
         "report.row_overtime": "Überstunden",
         "report.row_compliance": "Regelverstöße",
+        "report.row_info": "Tagesinfo",
         "report.unassigned_title": "Aufgaben ohne Kostenstelle (nicht in Gesamtsumme enthalten)",
 
         # Notifications

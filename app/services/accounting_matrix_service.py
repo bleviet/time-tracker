@@ -51,6 +51,10 @@ class AccountingMatrixService:
         # Map Key -> Set of Task Names
         acc_tasks_map: Dict[Any, set] = {}
 
+        # Track special days for Day Info row
+        vacation_dates = set()
+        sickness_dates = set()
+
         # 3. Process Entries
         for task in tasks:
             # Determine Aggregation Key logic
@@ -75,10 +79,21 @@ class AccountingMatrixService:
                 end_date=end_dt
             )
 
+            t_lower = task.name.lower()
+            is_vac_task = "vacation" in t_lower or "urlaub" in t_lower
+            is_sick_task = "sickness" in t_lower or "krank" in t_lower
+
             for entry in entries:
                 date_key = entry.start_time.date()
                 hours = entry.duration_seconds / 3600.0
                 matrix[key][date_key] = matrix[key].get(date_key, 0.0) + hours
+
+                # Tag status if hours exist
+                if hours > 0:
+                    if is_vac_task:
+                        vacation_dates.add(date_key)
+                    elif is_sick_task:
+                        sickness_dates.add(date_key)
 
         # 4. Process Time Off (if configured)
         for time_off in config.time_off_configs:
@@ -90,19 +105,29 @@ class AccountingMatrixService:
 
             acc_tasks_map[key].add(time_off.task_name)
 
+            t_lower = time_off.task_name.lower()
+            is_vac = "vacation" in t_lower or "urlaub" in t_lower
+            is_sick = "sickness" in t_lower or "krank" in t_lower
+
             for d in time_off.days:
                 if config.start_date <= d <= config.end_date:
                     matrix[key][d] = matrix[key].get(d, 0.0) + time_off.daily_hours
+                    if is_vac:
+                         vacation_dates.add(d)
+                    elif is_sick:
+                         sickness_dates.add(d)
 
         # 5. Format CSV
-        return self._format_csv(matrix, acc_tasks_map, acc_columns, config, prefs)
+        return self._format_csv(matrix, acc_tasks_map, acc_columns, config, prefs, vacation_dates, sickness_dates)
 
     def _format_csv(self,
                     matrix: Dict[Any, Dict[datetime.date, float]],
                     acc_tasks_map: Dict[Any, set],
                     acc_columns: List[str],
                     config: ReportConfiguration,
-                    prefs: UserPreferences) -> str:
+                    prefs: UserPreferences,
+                    vacation_dates: set[datetime.date],
+                    sickness_dates: set[datetime.date]) -> str:
 
         output = io.StringIO()
         writer = csv.writer(output, delimiter=';', lineterminator='\n')
@@ -118,6 +143,31 @@ class AccountingMatrixService:
         header = [tr("report.col_task"), tr("report.col_profile")] + acc_columns + [tr("report.col_total")]
         header.extend([self._format_date(d) for d in dates])
         writer.writerow(header)
+
+        # 1b. Day Info Row (Holiday, Vacation, Sickness)
+        # We need to scan entries/calendar to determine status per day.
+        # Priority: Holiday > Sickness > Vacation
+        status_row = [tr("report.row_info")] + [""] * (len(acc_columns) + 2) # +2 for Profile + Total
+
+        # Pre-calc statuses
+        day_statuses = {}
+        for d in dates:
+            status = ""
+            # 1. Holiday
+            if self.calendar_service.is_holiday(d):
+                name = self.calendar_service.get_holiday_name(d)
+                status = f"{tr('status.holiday')}: {name}" if name else tr("status.holiday")
+            else:
+                # 2. Check for Vacation/Sickness using pre-calced sets
+                if d in sickness_dates:
+                    status = tr("status.sickness")
+                elif d in vacation_dates:
+                    status = tr("status.vacation")
+
+            day_statuses[d] = status
+            status_row.append(status)
+
+        writer.writerow(status_row)
 
         # Prepare Rows - split into assigned and unassigned accounting
         assigned_rows = []  # Has accounting profile
