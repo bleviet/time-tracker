@@ -27,6 +27,7 @@ from .dialogs import InterruptionDialog
 from .main_window import MainWindow
 from .history_window import HistoryWindow
 from .settings_dialog import SettingsDialog
+from .splash_screen import SplashScreen
 from app.utils import get_resource_path
 
 
@@ -41,6 +42,11 @@ class SystemTrayApp:
         self.app = QApplication(sys.argv)
         self.app.setQuitOnLastWindowClosed(False)  # Keep running when windows close
 
+        # Show splash screen immediately for perceived responsiveness
+        self.splash = SplashScreen()
+        self.splash.show()
+        self.app.processEvents()
+
         # Set application icon (for taskbar, etc.)
         app_icon = self._create_icon()
         self.app.setWindowIcon(app_icon)
@@ -53,11 +59,13 @@ class SystemTrayApp:
         asyncio.set_event_loop(self.loop)
 
         # Load user preferences from repository (same source as settings dialog)
+        self.splash.update_status("Loading preferences...")
         from app.infra.repository import UserRepository
         self.user_repo = UserRepository()
         self.user_prefs = self.loop.run_until_complete(self.user_repo.get_preferences())
 
         # Apply theme based on user preference from repository
+        self.splash.update_status("Applying theme...")
         self._apply_theme(self.user_prefs.theme)
 
         # Services
@@ -177,20 +185,26 @@ class SystemTrayApp:
         """Async initialization tasks"""
         try:
             # Initialize database
+            self.splash.update_status("Initializing database...")
             self.loop.run_until_complete(init_db())
 
             # Load tasks
+            self.splash.update_status("Loading tasks...")
             self.loop.run_until_complete(self._load_tasks())
 
             # Rebuild menu with loaded tasks
             self.setup_menu()
 
             # Create and show main window
+            self.splash.update_status("Starting application...")
             self.main_window = MainWindow(self.timer, self.tasks)
             self.main_window.update_theme(self.user_prefs.theme)  # Apply saved theme
             self.main_window.closed.connect(self._on_main_window_closed)
             self.main_window.show_history.connect(self._show_history_window)
             self.main_window.show()
+
+            # Close splash screen now that main window is ready
+            self.splash.finish(self.main_window)
 
             # Setup global shortcut to show window (Ctrl+Shift+T)
             self.show_shortcut = QShortcut(QKeySequence("Ctrl+Shift+T"), self.main_window)
