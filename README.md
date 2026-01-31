@@ -176,7 +176,7 @@ You can manage your tasks via the **Manage Tasks** dialog (accessible from the H
 
 1. Right-click the system tray icon → "Generate Report..."
 2. **The Report Wizard** opens:
-   - **Configuration**: Select Report Type (Monthly Report) and Month/Year.
+   - **Configuration**: Select Report Type (CSV Report or Excel Report) and Month/Year.
    - **Time Off Manager**: Click days in the calendar to mark them as **Vacation** (Green) or **Sickness** (Red).
    - **Exclusions**: Uncheck tasks (like "Lunch" or "Break") to exclude them from the "Total Work" calculation.
 3. Click **Generate Report**. Your settings for Time Off and Exclusions are **automatically saved** for next time.
@@ -189,23 +189,6 @@ The application supports **English** and **German**.
 2. In the **General** tab, select your preferred language.
 3. The interface updates **immediately** without restarting.
 4. **Auto-detection**: By default, the app matches your system language.
-
-### Customizing Reports
-
-Edit templates in the `templates/` directory. Example template:
-
-```jinja2
-Time Tracking Report
-====================
-Period: {{ start_date }} to {{ end_date }}
-
-Total Time: {{ total_seconds | format_duration }}
-
-{% for task_data in tasks %}
-Task: {{ task_data.task.name }}
-  Total: {{ task_data.total_seconds | format_duration }}
-{% endfor %}
-```
 
 ## Database
 

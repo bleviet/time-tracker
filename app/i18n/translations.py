@@ -169,7 +169,7 @@ TRANSLATIONS = {
         "report.failed": "Failed to generate report:\\n{error}",
         "report.generating": "Saving & Generating...",
         "report.done": "Done!",
-        
+
         # Report Content
         "report.col_task": "Task name",
         "report.col_profile": "Accounting Profile",
@@ -180,6 +180,31 @@ TRANSLATIONS = {
         "report.row_compliance": "Compliance Notes",
         "report.row_info": "Day Info",
         "report.unassigned_title": "Tasks without Accounting (not included in totals above)",
+
+        # Dashboard (Excel)
+        "report.dashboard.title": "Monthly Time Report - {period}",
+        "report.dashboard.total_hours": "Total Hours",
+        "report.dashboard.avg_hours_day": "Avg Hours/Day",
+        "report.dashboard.category": "Category",
+        "report.dashboard.day": "Day",
+        "report.dashboard.hours": "Hours",
+        "report.dashboard.work_distribution": "Work Distribution",
+        "report.dashboard.daily_trend": "Daily Trend",
+        "report.dashboard.hours_by_category": "Hours by Category",
+        "report.dashboard.day_of_month": "Day of Month",
+        "report.dashboard.legend.work": "Work",
+        "report.dashboard.legend.vacation": "Vacation",
+        "report.dashboard.legend.sickness": "Sickness",
+        "report.dashboard.no_accounting": "No Accounting",
+
+        # Weekdays (short)
+        "weekday.short.mon": "Mon",
+        "weekday.short.tue": "Tue",
+        "weekday.short.wed": "Wed",
+        "weekday.short.thu": "Thu",
+        "weekday.short.fri": "Fri",
+        "weekday.short.sat": "Sat",
+        "weekday.short.sun": "Sun",
 
         # Notifications
         "notify.backup_complete": "Backup Complete",
@@ -460,6 +485,31 @@ TRANSLATIONS = {
         "report.row_compliance": "Regelverstöße",
         "report.row_info": "Tagesinfo",
         "report.unassigned_title": "Aufgaben ohne Kontierung (nicht in Gesamtsumme enthalten)",
+
+        # Dashboard (Excel)
+        "report.dashboard.title": "Monatlicher Zeitbericht - {period}",
+        "report.dashboard.total_hours": "Gesamtstunden",
+        "report.dashboard.avg_hours_day": "Ø Stunden/Tag",
+        "report.dashboard.category": "Kategorie",
+        "report.dashboard.day": "Tag",
+        "report.dashboard.hours": "Stunden",
+        "report.dashboard.work_distribution": "Arbeitsverteilung",
+        "report.dashboard.daily_trend": "Tagesverlauf",
+        "report.dashboard.hours_by_category": "Stunden je Kategorie",
+        "report.dashboard.day_of_month": "Tag des Monats",
+        "report.dashboard.legend.work": "Arbeit",
+        "report.dashboard.legend.vacation": "Urlaub",
+        "report.dashboard.legend.sickness": "Krankheit",
+        "report.dashboard.no_accounting": "Keine Kontierung",
+
+        # Weekdays (short)
+        "weekday.short.mon": "Mo",
+        "weekday.short.tue": "Di",
+        "weekday.short.wed": "Mi",
+        "weekday.short.thu": "Do",
+        "weekday.short.fri": "Fr",
+        "weekday.short.sat": "Sa",
+        "weekday.short.sun": "So",
 
         # Notifications
         "notify.backup_complete": "Sicherung abgeschlossen",

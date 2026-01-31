@@ -262,7 +262,8 @@ class ReportWindow(QDialog):
         tmpl_grp = QGroupBox(tr("report.type"))
         tmpl_layout = QHBoxLayout()
         self.template_combo = QComboBox()
-        self.template_combo.addItems(["Monthly Report"])
+        self.template_combo.addItems(["Excel Report (.xlsx)", "CSV Report (.csv)"])
+        self.template_combo.currentTextChanged.connect(self._on_template_changed)
         tmpl_layout.addWidget(QLabel(tr("report.template")))
         tmpl_layout.addWidget(self.template_combo)
         tmpl_grp.setLayout(tmpl_layout)
@@ -285,11 +286,20 @@ class ReportWindow(QDialog):
         layout.addWidget(file_grp)
         layout.addStretch()
 
+    def _on_template_changed(self, text):
+        """Update filename extension when template type changes"""
+        self._update_filename_if_default()
+
     def _browse_file(self):
+        template_type = self.template_combo.currentText()
+        is_excel = "Excel" in template_type
+        ext = "xlsx" if is_excel else "csv"
+        filter_str = "Excel Files (*.xlsx)" if is_excel else "CSV Files (*.csv)"
+
         filename, _ = QFileDialog.getSaveFileName(
             self, tr("report.save_title"),
-            f"report_{self.selected_date.strftime('%m_%Y')}.csv",
-            "CSV Files (*.csv)"
+            f"report_{self.selected_date.strftime('%m_%Y')}.{ext}",
+            filter_str
         )
         if filename:
             self.path_input.setText(filename)
@@ -340,9 +350,13 @@ class ReportWindow(QDialog):
     def _update_filename_if_default(self):
         """Update filename if user hasn't typed a custom one"""
         current_text = self.path_input.text()
+        template_type = self.template_combo.currentText()
+        is_excel = "Excel" in template_type
+        ext = "xlsx" if is_excel else "csv"
+
         # Heuristic: if it looks like a default filename or is empty
-        if "report_" in current_text or "No file" in current_text:
-            self.path_input.setText(f"report_{self.selected_date.strftime('%m_%Y')}.csv")
+        if "report_" in current_text or "No file" in current_text or tr("report.no_file") in current_text:
+            self.path_input.setText(f"report_{self.selected_date.strftime('%m_%Y')}.{ext}")
             self.path_input.setStyleSheet("color: black;") # Ensure visible
 
     async def _load_data(self):
@@ -410,26 +424,28 @@ class ReportWindow(QDialog):
     async def _run_service(self, config: ReportConfiguration):
         try:
             template_type = self.template_combo.currentText()
+            is_excel = "Excel" in template_type
 
             # Get german_state from settings for holiday detection
             german_state = getattr(self.settings, 'german_state', 'BY')
 
-            # Simplified logic: Always use (or Default to) Accounting Matrix Service for "Monthly Report"
-            # as requested by user to replace "Detailed CSV" and remove "Matrix Report"
-            if template_type == "Monthly Report":
-                from app.services.accounting_matrix_service import AccountingMatrixService
-                service = AccountingMatrixService(german_state=german_state)
-                content = await service.generate_report(config)
+            path = Path(config.output_path)
+
+            if is_excel:
+                from app.services.excel_report_service import ExcelReportService
+                service = ExcelReportService(german_state=german_state)
+                # Returns path string, writes file internally
+                await service.generate_report(config)
             else:
-                # Fallback purely for safety if somehow old value persists, but simpler to just default
+                 # Default to CSV
                  from app.services.accounting_matrix_service import AccountingMatrixService
                  service = AccountingMatrixService(german_state=german_state)
                  content = await service.generate_report(config)
 
-            path = Path(config.output_path)
-            path.parent.mkdir(parents=True, exist_ok=True)
-            with open(path, 'w', encoding='utf-8-sig') as f:
-                f.write(content)
+                 # CSV service returns content, needs writing
+                 path.parent.mkdir(parents=True, exist_ok=True)
+                 with open(path, 'w', encoding='utf-8-sig') as f:
+                    f.write(content)
 
             self.status_label.setText(tr("report.done"))
             QMessageBox.information(self, tr("report.success"), tr("report.saved_to", path=path))
