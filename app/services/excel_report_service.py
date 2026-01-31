@@ -641,10 +641,13 @@ class ExcelReportService:
         ws_hidden.write(row, 0, tr("report.dashboard.category"))
         ws_hidden.write(row, 1, tr("report.dashboard.hours"))
         categories = list(data['by_accounting'].items())
+        total_category_seconds = sum(seconds for _cat, seconds in categories)
         for cat, seconds in categories:
             row += 1
-            ws_hidden.write(row, 0, cat)
-            ws_hidden.write(row, 1, seconds / 3600.0)
+            percent = (seconds / total_category_seconds * 100.0) if total_category_seconds else 0.0
+            label = f"{cat} ({percent:.2f}%)"
+            ws_hidden.write(row, 0, label)
+            ws_hidden.write(row, 1, round(seconds / 3600.0, 2))
         donut_data_len = row
 
         # 2. Bar Data (By Day)
@@ -672,9 +675,9 @@ class ExcelReportService:
             vac_seconds = seconds if is_vac else 0.0
             sick_seconds = seconds if is_sick else 0.0
             ws_hidden.write(row, 3, day_label)
-            ws_hidden.write(row, 4, work_seconds / 3600.0)
-            ws_hidden.write(row, 5, vac_seconds / 3600.0)
-            ws_hidden.write(row, 6, sick_seconds / 3600.0)
+            ws_hidden.write(row, 4, round(work_seconds / 3600.0, 2))
+            ws_hidden.write(row, 5, round(vac_seconds / 3600.0, 2))
+            ws_hidden.write(row, 6, round(sick_seconds / 3600.0, 2))
         bar_data_len = row
 
         # -- Donut Chart --
@@ -693,7 +696,7 @@ class ExcelReportService:
                 'categories': ['Hidden_Chart_Data', 1, 0, donut_data_len, 0],
                 'values':     ['Hidden_Chart_Data', 1, 1, donut_data_len, 1],
                 'data_labels': {
-                    'percentage': True,
+                    'category': True,
                     'value': True,
                     'separator': '\n',
                     'num_format': '0.00',
