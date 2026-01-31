@@ -32,7 +32,7 @@ TRANSLATIONS = {
 
         # History window
         "history.title": "Monthly Overview",
-        "history.add_entry": "+ Add Manual Entry",
+        "history.add_entry": "Add Manual Entry",
         "history.manage_accounting": "Manage Accounting",
         "history.manage_tasks": "Manage Tasks",
         "history.generate_report": "Generate Report",
@@ -222,6 +222,7 @@ TRANSLATIONS = {
         # Accounting Management
         "acc_mgmt.title": "Manage Accounting",
         "acc_mgmt.btn_add_profile": "Add Profile",
+        "acc_mgmt.btn_add_property": "Add Property",
         "acc_mgmt.btn_edit_profile": "Edit Profile",
         "acc_mgmt.btn_del_profile": "Delete Profile",
         "acc_mgmt.btn_columns": "Column Settings",
@@ -501,6 +502,7 @@ TRANSLATIONS = {
         # Accounting Management
         "acc_mgmt.title": "Kontierung verwalten",
         "acc_mgmt.btn_add_profile": "Profil hinzufügen",
+        "acc_mgmt.btn_add_property": "Eigenschaft hinzufügen",
         "acc_mgmt.btn_edit_profile": "Profil bearbeiten",
         "acc_mgmt.btn_del_profile": "Profil löschen",
         "acc_mgmt.btn_columns": "Spalteneinstellungen",

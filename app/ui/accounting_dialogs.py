@@ -8,94 +8,16 @@ from PySide6.QtWidgets import (
     QWidget, QLineEdit, QMenu
 )
 from PySide6.QtGui import QAction
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QPoint
 
 from app.domain.models import Accounting, UserPreferences
 from app.infra.repository import AccountingRepository, UserRepository
 from app.i18n import tr
 
-class AccountingSettingsDialog(QDialog):
-    """
-    Dialog to configure dynamic accounting columns.
-    """
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle(tr("acc_settings.title"))
-        self.resize(400, 300)
-        self.repo = UserRepository()
-        self.preferences = None
-        self.columns = []
-        
-        self.loop = asyncio.get_event_loop()
-        
-        self._setup_ui()
-        self._load_columns()
-        
-    def _setup_ui(self):
-        layout = QVBoxLayout(self)
-        
-        layout.addWidget(QLabel(tr("acc_settings.help_text")))
-        
-        self.list_widget = QListWidget()
-        layout.addWidget(self.list_widget)
-        
-        btn_layout = QHBoxLayout()
-        self.add_btn = QPushButton(tr("acc_settings.btn_add"))
-        self.add_btn.clicked.connect(self._add_column)
-        
-        self.remove_btn = QPushButton(tr("acc_settings.btn_remove"))
-        self.remove_btn.clicked.connect(self._remove_column)
-        
-        btn_layout.addWidget(self.add_btn)
-        btn_layout.addWidget(self.remove_btn)
-        layout.addLayout(btn_layout)
-        
-        save_btn = QPushButton(tr("acc_settings.btn_save_close"))
-        save_btn.clicked.connect(self._save)
-        layout.addWidget(save_btn)
-        
-    def _load_columns(self):
-        try:
-            self.preferences = self.loop.run_until_complete(self.repo.get_preferences())
-            self.columns = list(self.preferences.accounting_columns)
-            self._refresh_list()
-        except Exception as e:
-            QMessageBox.critical(self, tr("error"), tr("acc_settings.load_error").format(error=e))
-            
-    def _refresh_list(self):
-        self.list_widget.clear()
-        for col in self.columns:
-            self.list_widget.addItem(col)
-            
-    def _add_column(self):
-        text, ok = QInputDialog.getText(self, tr("acc_settings.new_col_title"), tr("acc_settings.new_col_msg"))
-        if ok and text:
-            if text in self.columns:
-                QMessageBox.warning(self, tr("error"), tr("acc_settings.error_exists"))
-                return
-            self.columns.append(text)
-            self._refresh_list()
-            
-    def _remove_column(self):
-        row = self.list_widget.currentRow()
-        if row >= 0:
-            del self.columns[row]
-            self._refresh_list()
-            
-    def _save(self):
-        if self.preferences:
-            self.preferences.accounting_columns = self.columns
-            try:
-                self.loop.run_until_complete(self.repo.update_preferences(self.preferences))
-                self.accept()
-            except Exception as e:
-                QMessageBox.critical(self, tr("error"), tr("acc_settings.save_error").format(error=e))
-
-
 class AccountingManagementDialog(QDialog):
     """
     Manage Accounting Profiles (List, Add, Edit, Delete).
-    Supports inline editing.
+    Supports inline editing and property management.
     """
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -122,7 +44,11 @@ class AccountingManagementDialog(QDialog):
         # Enable item changed signal for inline editing
         self.table.itemChanged.connect(self._on_item_changed)
         
-        # Context Menu
+        # Enable header context menu for removing properties
+        self.table.horizontalHeader().setContextMenuPolicy(Qt.CustomContextMenu)
+        self.table.horizontalHeader().customContextMenuRequested.connect(self._show_header_context_menu)
+        
+        # Context Menu for Rows (Delete Profile)
         self.table.setContextMenuPolicy(Qt.CustomContextMenu)
         self.table.customContextMenuRequested.connect(self._show_context_menu)
         
@@ -136,13 +62,14 @@ class AccountingManagementDialog(QDialog):
         del_btn = QPushButton(tr("acc_mgmt.btn_del_profile"))
         del_btn.clicked.connect(self._delete_profile)
         
-        settings_btn = QPushButton(tr("acc_mgmt.btn_columns"))
-        settings_btn.clicked.connect(self._open_settings)
+        # New "Add Property" button
+        add_prop_btn = QPushButton(tr("acc_mgmt.btn_add_property"))
+        add_prop_btn.clicked.connect(self._add_property)
         
         btn_layout.addWidget(add_btn)
         btn_layout.addWidget(del_btn)
         btn_layout.addStretch()
-        btn_layout.addWidget(settings_btn)
+        btn_layout.addWidget(add_prop_btn)
         
         layout.addLayout(btn_layout)
         
@@ -150,7 +77,7 @@ class AccountingManagementDialog(QDialog):
         try:
             # Load Columns
             prefs = self.loop.run_until_complete(self.user_repo.get_preferences())
-            self.columns = prefs.accounting_columns
+            self.columns = list(prefs.accounting_columns)
             
             # Load Profiles
             self.profiles = self.loop.run_until_complete(self.repo.get_all_active())
@@ -197,7 +124,6 @@ class AccountingManagementDialog(QDialog):
         if col == 0:
             # Name changed
             if not new_value:
-                # Keep it simple: don't save empty names
                 return 
             profile.name = new_value
         else:
@@ -216,6 +142,7 @@ class AccountingManagementDialog(QDialog):
             self.table.blockSignals(False)
 
     def _show_context_menu(self, pos):
+        """Context menu for rows (Delete Profile)"""
         index = self.table.indexAt(pos)
         if not index.isValid():
             return
@@ -227,13 +154,27 @@ class AccountingManagementDialog(QDialog):
         menu.addAction(del_action)
         
         menu.exec(self.table.mapToGlobal(pos))
+        
+    def _show_header_context_menu(self, pos):
+        """Context menu for headers (Delete Property)"""
+        col = self.table.horizontalHeader().logicalIndexAt(pos)
+        
+        # Column 0 is Name, cannot delete
+        if col <= 0:
+            return
             
-    def _open_settings(self):
-        dlg = AccountingSettingsDialog(self)
-        if dlg.exec():
-            # Refresh if columns changed
-            self._load_data() 
+        # Check if it corresponds to a dynamic property
+        if col - 1 < len(self.columns):
+            col_name = self.columns[col - 1]
             
+            menu = QMenu(self)
+            # "Delete Property 'X'"
+            del_action = QAction(f"{tr('action.delete')} '{col_name}'", self)
+            del_action.triggered.connect(lambda: self._delete_property(col_name))
+            menu.addAction(del_action)
+            
+            menu.exec(self.table.mapToGlobal(pos))
+
     def _add_profile(self):
         # Create a default profile immediately
         new_profile = Accounting(
@@ -254,6 +195,54 @@ class AccountingManagementDialog(QDialog):
             
         except Exception as e:
             QMessageBox.critical(self, tr("error"), tr("acc_mgmt.create_error").format(error=e))
+            
+    def _add_property(self):
+        """Add a new accounting property (column)"""
+        text, ok = QInputDialog.getText(self, tr("acc_settings.new_col_title"), tr("acc_settings.new_col_msg"))
+        if ok and text:
+            text = text.strip()
+            if not text:
+                return
+                
+            if text in self.columns:
+                QMessageBox.warning(self, tr("error"), tr("acc_settings.error_exists"))
+                return
+            
+            # Update Preferences
+            try:
+                prefs = self.loop.run_until_complete(self.user_repo.get_preferences())
+                current_cols = list(prefs.accounting_columns)
+                current_cols.append(text)
+                
+                prefs.accounting_columns = current_cols
+                self.loop.run_until_complete(self.user_repo.update_preferences(prefs))
+                
+                # Reload UI
+                self._load_data()
+                
+            except Exception as e:
+                QMessageBox.critical(self, tr("error"), tr("acc_settings.save_error").format(error=e))
+                
+    def _delete_property(self, col_name: str):
+        """Delete an accounting property (column)"""
+        reply = QMessageBox.question(
+            self, tr("acc_mgmt.confirm_del_title"),
+            f"{tr('action.delete')} '{col_name}'?",
+            QMessageBox.Yes | QMessageBox.No
+        )
+        if reply == QMessageBox.Yes:
+            try:
+                prefs = self.loop.run_until_complete(self.user_repo.get_preferences())
+                current_cols = list(prefs.accounting_columns)
+                if col_name in current_cols:
+                    current_cols.remove(col_name)
+                    
+                prefs.accounting_columns = current_cols
+                self.loop.run_until_complete(self.user_repo.update_preferences(prefs))
+                
+                self._load_data()
+            except Exception as e:
+                QMessageBox.critical(self, tr("error"), tr("acc_settings.save_error").format(error=e))
                 
     def _delete_profile(self):
         row = self.table.currentRow()
