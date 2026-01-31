@@ -169,6 +169,16 @@ TRANSLATIONS = {
         "report.failed": "Failed to generate report:\\n{error}",
         "report.generating": "Saving & Generating...",
         "report.done": "Done!",
+        
+        # Report Content
+        "report.col_task": "Task name",
+        "report.col_profile": "Accounting Profile",
+        "report.col_total": "Total hours",
+        "report.row_total": "Total Work",
+        "report.row_target": "Daily Target",
+        "report.row_overtime": "Overtime",
+        "report.row_compliance": "Compliance Notes",
+        "report.unassigned_title": "Tasks without Accounting (not included in totals above)",
 
         # Notifications
         "notify.backup_complete": "Backup Complete",
@@ -386,6 +396,16 @@ TRANSLATIONS = {
         "report.failed": "Berichtserstellung fehlgeschlagen:\\n{error}",
         "report.generating": "Speichern & Generieren...",
         "report.done": "Fertig!",
+
+        # Report Content
+        "report.col_task": "Aufgabenname",
+        "report.col_profile": "Kostenstelle",
+        "report.col_total": "Gesamtstunden",
+        "report.row_total": "Gesamtarbeit",
+        "report.row_target": "Tagesziel",
+        "report.row_overtime": "Überstunden",
+        "report.row_compliance": "Regelverstöße",
+        "report.unassigned_title": "Aufgaben ohne Kostenstelle (nicht in Gesamtsumme enthalten)",
 
         # Notifications
         "notify.backup_complete": "Sicherung abgeschlossen",

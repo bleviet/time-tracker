@@ -4,6 +4,9 @@ import csv
 import io
 import logging
 from typing import List, Dict, Any, Optional
+from PySide6.QtCore import QLocale
+
+from app.i18n import tr
 
 from app.domain.models import Task, TimeEntry, Accounting, UserPreferences
 from app.infra.repository import TaskRepository, TimeEntryRepository, AccountingRepository, UserRepository
@@ -105,10 +108,15 @@ class AccountingMatrixService:
         writer = csv.writer(output, delimiter=';', lineterminator='\n')
 
         dates = config.date_range
+        locale = QLocale()
+
+        # Helper for number formatting
+        def fmt_num(val: float) -> str:
+            return locale.toString(val, 'f', 1)
 
         # Header: Task name(s), Accounting Profile, [Cols], Total hours, [Dates]
-        header = ["Task name", "Accounting Profile"] + acc_columns + ["Total hours"]
-        header.extend([self._format_german_date(d) for d in dates])
+        header = [tr("report.col_task"), tr("report.col_profile")] + acc_columns + [tr("report.col_total")]
+        header.extend([self._format_date(d) for d in dates])
         writer.writerow(header)
 
         # Prepare Rows - split into assigned and unassigned accounting
@@ -159,12 +167,12 @@ class AccountingMatrixService:
             for col in acc_columns:
                 row.append(item['acc_attrs'].get(col, ""))
 
-            row.append(f"{rows_total_hours:.1f}".replace('.', ','))
+            row.append(fmt_num(rows_total_hours))
 
             for d in dates:
                 val = row_data.get(d, 0.0)
                 if val > 0:
-                    row.append(f"{val:.1f}".replace('.', ','))
+                    row.append(fmt_num(val))
                     day_totals[d] += val
                 else:
                     row.append("")
@@ -177,21 +185,21 @@ class AccountingMatrixService:
 
         # 1. Total Work
         writer.writerow([])
-        total_row = ["Total Work"] + padding
+        total_row = [tr("report.row_total")] + padding
         grand_total = sum(day_totals.values())
-        total_row.append(f"{grand_total:.1f}".replace('.', ','))
+        total_row.append(fmt_num(grand_total))
 
         for d in dates:
             val = day_totals[d]
             if val > 0:
-                total_row.append(f"{val:.1f}".replace('.', ','))
+                total_row.append(fmt_num(val))
             else:
                 total_row.append("")
         writer.writerow(total_row)
 
         # 2. Daily Target (Footer Row 2)
         # Note: Holidays and weekends have 0 target hours
-        target_row = ["Daily Target"] + padding
+        target_row = [tr("report.row_target")] + padding
         # Calculate totals
         total_target = 0.0
         day_targets = {}
@@ -205,27 +213,33 @@ class AccountingMatrixService:
             else:
                 day_targets[d] = 0.0
 
-        target_row.append(f"{total_target:.1f}".replace('.', ','))
+        target_row.append(fmt_num(total_target))
         for d in dates:
             val = day_targets[d]
-            target_row.append(f"{val:.1f}".replace('.', ','))
+            target_row.append(fmt_num(val))
         writer.writerow(target_row)
 
         # 3. Overtime (Footer Row 3)
-        ot_row = ["Overtime"] + padding
+        ot_row = [tr("report.row_overtime")] + padding
         total_ot = grand_total - total_target
-        ot_row.append(f"{total_ot:+.1f}".replace('.', ','))
+        # Use simple formatting for overtime to include sign if possible?
+        # QLocale doesn't force sign always, but usually handles negative.
+        # Python's f"{val:+.1f}" forces sign.
+        # But we need locale specific separator.
+        # We can do: ("+" if total_ot > 0 else "") + fmt_num(total_ot)
+        # Or just rely on negative sign.
+        ot_row.append(fmt_num(total_ot))
 
         for d in dates:
             actual = day_totals.get(d, 0.0)
             target = day_targets.get(d, 0.0)
             diff = actual - target
-            ot_row.append(f"{diff:+.1f}".replace('.', ','))
+            ot_row.append(fmt_num(diff))
         writer.writerow(ot_row)
 
         # 4. Compliance Warnings (Footer Row 4 - Optional)
         if prefs.enable_german_compliance:
-            notes_row = ["Compliance Notes"] + padding + [""] # skip total col
+            notes_row = [tr("report.row_compliance")] + padding + [""] # skip total col
             has_warnings = False
             notes_list = []
 
@@ -237,10 +251,6 @@ class AccountingMatrixService:
                     note = f"> {prefs.max_daily_hours}h!"
                     has_warnings = True
 
-                # Check breaks? (Logic complex for matrix, need entry-level data)
-                # Matrix assumes aggregation. We only strictly know total duration here, not block distribution.
-                # So we can only check daily max.
-
                 notes_list.append(note)
 
             if has_warnings:
@@ -251,7 +261,7 @@ class AccountingMatrixService:
         if unassigned_rows:
             writer.writerow([])
             writer.writerow([])
-            writer.writerow(["Tasks without Accounting (not included in totals above)"])
+            writer.writerow([tr("report.unassigned_title")])
             writer.writerow([])
 
             # Write unassigned rows header (same as main header)
@@ -268,12 +278,12 @@ class AccountingMatrixService:
                 for col in acc_columns:
                     row.append("")  # No accounting attributes
 
-                row.append(f"{rows_total_hours:.1f}".replace('.', ','))
+                row.append(fmt_num(rows_total_hours))
 
                 for d in dates:
                     val = row_data.get(d, 0.0)
                     if val > 0:
-                        row.append(f"{val:.1f}".replace('.', ','))
+                        row.append(fmt_num(val))
                     else:
                         row.append("")
 
@@ -281,17 +291,13 @@ class AccountingMatrixService:
 
         return output.getvalue()
 
-    def _format_german_date(self, date_obj: datetime.date) -> str:
+    def _format_date(self, date_obj: datetime.date) -> str:
         """
-        Format date as 'Do, 01. Jan 26'
+        Format date using system locale.
+        e.g. 'ddd, dd. MMM yy' (German) or 'ddd, MMM dd, yy' (English)
         """
-        weekdays = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
-        months = ["", "Jan", "Feb", "Mär", "Apr", "Mai", "Jun",
-                  "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"]
-
-        wd = weekdays[date_obj.weekday()]
-        day = f"{date_obj.day:02d}"
-        month = months[date_obj.month]
-        year = date_obj.strftime("%y")
-
-        return f"{wd}, {day}. {month} {year}"
+        loc = QLocale()
+        if loc.language() == QLocale.German:
+             return loc.toString(date_obj, "ddd, dd. MMM yy")
+        else:
+             return loc.toString(date_obj, "ddd, MMM dd, yy")
