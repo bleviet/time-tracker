@@ -5,7 +5,7 @@ from datetime import datetime
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QTableWidget, QTableWidgetItem, 
     QPushButton, QHBoxLayout, QMessageBox, QHeaderView,
-    QMenu, QComboBox, QWidget
+    QMenu, QComboBox
 )
 from PySide6.QtGui import QAction
 from PySide6.QtCore import Qt

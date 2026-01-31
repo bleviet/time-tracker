@@ -6,14 +6,14 @@ Minimal UI with just task input and timer display, always visible on screen.
 """
 
 import asyncio
-from typing import List, Optional
+from typing import List
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout, QLineEdit,
     QLabel, QCompleter, QMessageBox, QApplication, QPushButton,
     QDialog, QVBoxLayout
 )
 from PySide6.QtCore import Qt, Signal, QStringListModel, QEvent, QUrl
-from PySide6.QtGui import QFont, QScreen, QShortcut, QKeySequence, QPalette
+from PySide6.QtGui import QFont, QShortcut, QKeySequence, QPalette
 
 from app.domain.models import Task
 from app.services import TimerService

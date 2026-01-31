@@ -6,11 +6,9 @@ Generates rich Excel reports with Dashboards and formatted Data tables.
 
 import datetime
 import calendar
-from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Dict, Any
 import xlsxwriter
 
-from app.domain.models import Task, TimeEntry, UserPreferences
 from app.infra.repository import TaskRepository, TimeEntryRepository, UserRepository, AccountingRepository
 from app.services.matrix_report_service import ReportConfiguration
 from app.services.calendar_service import CalendarService

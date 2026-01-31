@@ -1,16 +1,15 @@
 import asyncio
-from typing import List, Dict
+from typing import List
 
 from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, 
-    QListWidget, QListWidgetItem, QInputDialog, QFormLayout, 
-    QMessageBox, QTableWidget, QTableWidgetItem, QHeaderView,
-    QWidget, QLineEdit, QMenu
+    QDialog, QVBoxLayout, QHBoxLayout, QPushButton,
+    QInputDialog, QMessageBox, QTableWidget, QTableWidgetItem,
+    QHeaderView, QMenu
 )
 from PySide6.QtGui import QAction
-from PySide6.QtCore import Qt, QPoint
+from PySide6.QtCore import Qt
 
-from app.domain.models import Accounting, UserPreferences
+from app.domain.models import Accounting
 from app.infra.repository import AccountingRepository, UserRepository
 from app.i18n import tr
 
@@ -37,7 +36,6 @@ class AccountingManagementDialog(QDialog):
     def _setup_ui(self):
         layout = QVBoxLayout(self)
         
-        # Table
         self.table = QTableWidget()
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
@@ -54,7 +52,6 @@ class AccountingManagementDialog(QDialog):
         
         layout.addWidget(self.table)
         
-        # Buttons
         btn_layout = QHBoxLayout()
         add_btn = QPushButton(tr("acc_mgmt.btn_add_profile"))
         add_btn.clicked.connect(self._add_profile)
@@ -62,7 +59,6 @@ class AccountingManagementDialog(QDialog):
         del_btn = QPushButton(tr("acc_mgmt.btn_del_profile"))
         del_btn.clicked.connect(self._delete_profile)
         
-        # Property buttons
         add_prop_btn = QPushButton(tr("acc_mgmt.btn_add_property"))
         add_prop_btn.clicked.connect(self._add_property)
 

@@ -3,12 +3,12 @@ import datetime
 import csv
 import io
 import logging
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from PySide6.QtCore import QLocale
 
 from app.i18n import tr
 
-from app.domain.models import Task, TimeEntry, Accounting, UserPreferences
+from app.domain.models import UserPreferences
 from app.infra.repository import TaskRepository, TimeEntryRepository, AccountingRepository, UserRepository
 from app.services.matrix_report_service import ReportConfiguration
 from app.services.calendar_service import CalendarService

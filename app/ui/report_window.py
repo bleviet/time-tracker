@@ -12,15 +12,14 @@ import datetime
 import calendar
 import asyncio
 from pathlib import Path
-from typing import List, Dict, Optional, Set
+from typing import List
 import yaml
 
 from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QTabWidget, QWidget, QFileDialog, QComboBox, QScrollArea,
-    QGridLayout, QCheckBox, QMessageBox, QGroupBox
+    QDialog, QVBoxLayout, QHBoxLayout, QPushButton,
+    QTabWidget, QWidget, QFileDialog, QComboBox,
+    QMessageBox, QGroupBox
 )
-from PySide6.QtCore import Qt, QDate, Signal
 
 from app.domain.models import Task
 from app.infra.repository import TaskRepository

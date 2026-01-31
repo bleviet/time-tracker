@@ -7,10 +7,9 @@ Allows users to customize reports without changing code.
 
 import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
-from jinja2 import Environment, FileSystemLoader, Template
+from typing import List, Optional
+from jinja2 import Environment, FileSystemLoader
 
-from app.domain.models import Task, TimeEntry
 from app.infra.repository import TaskRepository, TimeEntryRepository, UserRepository, AccountingRepository
 from app.utils import get_resource_path
 

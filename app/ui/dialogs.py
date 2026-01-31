@@ -2,18 +2,16 @@
 Dialogs for handling interruptions and manual entry.
 """
 
-from typing import List, Optional
-import asyncio
+from typing import List
 from datetime import datetime
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QLabel, QPushButton, QHBoxLayout, 
     QComboBox, QDateEdit, QTimeEdit, QTextEdit, QFormLayout, 
-    QDialogButtonBox, QMessageBox, QLineEdit
+    QDialogButtonBox, QMessageBox
 )
-from PySide6.QtCore import Qt, QDate, QTime
+from PySide6.QtCore import QDate, QTime
 
-from app.domain.models import Task, TimeEntry, Accounting
-from app.infra.repository import AccountingRepository
+from app.domain.models import Task, TimeEntry
 from app.i18n import tr
 
 

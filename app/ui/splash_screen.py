@@ -1,8 +1,8 @@
 import sys
-from PySide6.QtWidgets import (QSplashScreen, QApplication, QWidget, QVBoxLayout, 
+from PySide6.QtWidgets import (QSplashScreen, QApplication, QVBoxLayout, 
                              QHBoxLayout, QLabel, QProgressBar, QFrame, QGraphicsDropShadowEffect)
-from PySide6.QtGui import QPixmap, QColor, QFont, QPalette
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QPixmap, QColor, QFont
+from PySide6.QtCore import Qt
 
 from app.utils import get_resource_path
 from app.i18n import tr, detect_system_language, set_language
