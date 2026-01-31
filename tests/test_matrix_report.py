@@ -35,7 +35,7 @@ async def test_matrix_report_generation(db_session, monkeypatch):
     # 1. Setup Data
     task_dev = await task_repo.create(Task(name="Development", description="Coding"))
     task_pause = await task_repo.create(Task(name="Pause", description="Break"))
-    
+
     # Add Entry for Dev: Jan 1st 2026, 4 hours
     await entry_repo.create(TimeEntry(
         task_id=task_dev.id,
@@ -43,7 +43,7 @@ async def test_matrix_report_generation(db_session, monkeypatch):
         end_time=datetime.datetime(2026, 1, 1, 13, 0),
         duration_seconds=4 * 3600
     ))
-    
+
     # Add Entry for Pause: Jan 1st 2026, 1 hour
     await entry_repo.create(TimeEntry(
         task_id=task_pause.id,
@@ -69,21 +69,21 @@ async def test_matrix_report_generation(db_session, monkeypatch):
         ],
         excluded_tasks=["Pause"]
     )
-    
+
     # 3. Generate
     csv_str = await service.generate_report(config)
     lines = csv_str.strip().split('\n')
-    
+
     # 4. Verify
     # Header check
     assert "Task name" in lines[0]
     assert "01. Jan 26" in lines[0] # Check date format
-    
+
     # Find rows
     dev_row = next((l for l in lines if l.startswith("Development")), None)
     pause_row = next((l for l in lines if l.startswith("Pause")), None)
     total_row = next((l for l in lines if l.startswith("Total Work")), None)
-    
+
     # Check for Sickness and Vacation rows
     vacation_row = next((l for l in lines if l.startswith("Vacation")), None)
     sickness_row = next((l for l in lines if l.startswith("Sickness")), None)
@@ -93,33 +93,33 @@ async def test_matrix_report_generation(db_session, monkeypatch):
     assert total_row is not None
     assert vacation_row is not None
     assert sickness_row is not None
-    
+
     # Check Dev hours (Jan 1)
     # Col 1=Task, 2=User1, 3=User2, 4=Total, 5=Jan 1
     # 4.0 hours
-    assert "4,0" in dev_row 
+    assert "4,0" in dev_row
 
     # Check Pause hours (Jan 1)
     # 1.0 hours
     assert "1,0" in pause_row
-    
+
     # Check Total Work
     # Should include Dev (4.0) + Vacation (8.0 on Jan 2)
     # Should NOT include Pause (1.0)
     # Total = 12.0
     # Let's check the specific values
     # Total Row format: Total Work;;;12,0;4,0;8,0;...
-    
+
     print(csv_str) # For debugging if fails
 
     # Verify Vacation logic (Jan 2)
     assert "8,0" in total_row
-    
+
     # Verify Sickness logic (Jan 3) -> should also be 8.0 in total
     # Check that Sickness row has 8,0 at Jan 3 position
     # and Total Work has 8,0 there too.
-    
+
     # Verify Grand Total
     # Dev(4) + Vacation(8) + Sickness(8) = 20
     # Pause is excluded
-    assert "20,0" in total_row 
+    assert "20,0" in total_row
