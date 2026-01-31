@@ -123,6 +123,7 @@ class UserPreferences(BaseModel):
     # Backup settings
     backup_enabled: bool = Field(default=False, description="Enable automatic backups")
     backup_frequency_days: int = Field(default=7, description="Backup frequency in days (1=daily, 7=weekly)")
+    backup_time: str = Field(default="09:00", description="Time of day for automatic backup (HH:MM)")
     backup_directory: Optional[str] = Field(default=None, description="Custom backup directory path")
     backup_retention_count: int = Field(default=5, description="Number of backup files to keep")
     last_backup_date: Optional[str] = Field(default=None, description="ISO date of last backup")

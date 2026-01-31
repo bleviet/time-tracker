@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (
     QLabel, QGroupBox, QHBoxLayout, QPushButton, QLineEdit, QFileDialog,
     QComboBox, QListWidget, QListWidgetItem, QProgressDialog
 )
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, Signal, QTime
 
 from app.domain.models import UserPreferences
 from app.infra.repository import UserRepository
@@ -151,6 +151,14 @@ class SettingsDialog(QDialog):
         self.combo_backup_frequency.addItem("Monthly", 30)
         auto_layout.addRow("Backup frequency:", self.combo_backup_frequency)
 
+        # Backup time
+        from PySide6.QtWidgets import QTimeEdit
+        self.time_backup = QTimeEdit()
+        self.time_backup.setDisplayFormat("HH:mm")
+        self.time_backup.setTime(QTime(9, 0))  # Default 9:00 AM
+        self.time_backup.setToolTip("Time of day when automatic backup will be performed")
+        auto_layout.addRow("Backup time:", self.time_backup)
+
         # Retention
         self.spin_backup_retention = QSpinBox()
         self.spin_backup_retention.setRange(1, 50)
@@ -212,8 +220,10 @@ class SettingsDialog(QDialog):
 
     def _on_backup_enabled_changed(self, state):
         """Enable/disable backup controls based on checkbox"""
-        enabled = state == Qt.Checked
+        # Handle both int and Qt.CheckState enum
+        enabled = state == Qt.Checked or state == Qt.CheckState.Checked or state == 2
         self.combo_backup_frequency.setEnabled(enabled)
+        self.time_backup.setEnabled(enabled)
         self.spin_backup_retention.setEnabled(enabled)
         self.edit_backup_dir.setEnabled(enabled)
         self.btn_browse_backup.setEnabled(enabled)
@@ -383,6 +393,12 @@ class SettingsDialog(QDialog):
             freq_index = self.combo_backup_frequency.findData(self.prefs.backup_frequency_days)
             if freq_index >= 0:
                 self.combo_backup_frequency.setCurrentIndex(freq_index)
+            # Set backup time
+            try:
+                hour, minute = map(int, self.prefs.backup_time.split(':'))
+                self.time_backup.setTime(QTime(hour, minute))
+            except (ValueError, AttributeError):
+                self.time_backup.setTime(QTime(9, 0))  # Default
             self.spin_backup_retention.setValue(self.prefs.backup_retention_count)
             self.edit_backup_dir.setText(self.prefs.backup_directory or "")
             self._on_backup_enabled_changed(
@@ -415,6 +431,7 @@ class SettingsDialog(QDialog):
             # Backup settings
             self.prefs.backup_enabled = self.check_backup_enabled.isChecked()
             self.prefs.backup_frequency_days = self.combo_backup_frequency.currentData()
+            self.prefs.backup_time = self.time_backup.time().toString("HH:mm")
             self.prefs.backup_retention_count = self.spin_backup_retention.value()
             backup_dir = self.edit_backup_dir.text().strip()
             self.prefs.backup_directory = backup_dir if backup_dir else None

@@ -324,6 +324,20 @@ class BackupService:
         if not prefs.backup_enabled:
             return False
 
+        now = datetime.now()
+
+        # Parse scheduled backup time
+        try:
+            backup_hour, backup_minute = map(int, prefs.backup_time.split(':'))
+        except (ValueError, AttributeError):
+            backup_hour, backup_minute = 9, 0  # Default to 9:00 AM
+
+        # Check if we're past the scheduled time today
+        scheduled_time_today = now.replace(hour=backup_hour, minute=backup_minute, second=0, microsecond=0)
+        if now < scheduled_time_today:
+            # Haven't reached backup time yet today
+            return False
+
         if not prefs.last_backup_date:
             return True
 
