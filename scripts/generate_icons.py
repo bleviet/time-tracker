@@ -1,40 +1,58 @@
 import os
+import subprocess
+import shutil
 from pathlib import Path
-from PIL import Image
+
+def run_magick(args):
+    """Run imagemagick command"""
+    try:
+        # Check if 'magick' (v7) or 'convert' (v6) is available
+        cmd = ["magick"] + args
+        subprocess.run(cmd, check=True, shell=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error running magick: {e}")
 
 def generate_icons():
-    """Generate cross-platform icons from master_icon.png"""
+    """Generate cross-platform icons from master_icon.svg using ImageMagick"""
     base_dir = Path(__file__).parent.parent
     assets_dir = base_dir / "app" / "assets"
-    master_path = assets_dir / "master_icon.png"
+    master_svg = assets_dir / "master_icon.svg"
     
-    if not master_path.exists():
-        print(f"Error: Master icon not found at {master_path}")
+    if not master_svg.exists():
+        print(f"Error: Master SVG not found at {master_svg}")
         return
 
-    img = Image.open(master_path)
+    print(f"Generating icons from {master_svg}...")
+
+    # 1. Generate master_icon.png and clock_icon.png (general assets)
+    print("Generating master_icon.png (1024x1024)...")
+    run_magick(["convert", "-background", "none", str(master_svg), "-resize", "1024x1024", str(assets_dir / "master_icon.png")])
     
-    # 1. Windows ICO
-    # Best practice: 16, 32, 48, 64, 256
-    windows_sizes = [(16, 16), (32, 32), (48, 48), (64, 64), (256, 256)]
+    print("Generating clock_icon.png (256x256)...")
+    run_magick(["convert", "-background", "none", str(master_svg), "-resize", "256x256", str(assets_dir / "clock_icon.png")])
+
+    # 2. Windows ICO
+    # Best practice: 16, 32, 48, 64, 128, 256
     ico_path = assets_dir / "icon.ico"
     print(f"Generating Windows ICO: {ico_path}")
-    img.save(ico_path, format='ICO', sizes=windows_sizes)
+    # ImageMagick can create ICO directly containing multiple sizes
+    run_magick([
+        "convert", "-background", "none", str(master_svg), 
+        "-define", "icon:auto-resize=256,128,64,48,32,16", 
+        str(ico_path)
+    ])
     
-    # 2. Linux PNGs
+    # 3. Linux PNGs
     linux_dir = assets_dir / "linux"
     linux_dir.mkdir(exist_ok=True)
     
     linux_sizes = [16, 22, 24, 32, 48, 64, 128, 256, 512]
     print(f"Generating Linux PNGs in {linux_dir}")
     for size in linux_sizes:
-        resized = img.resize((size, size), Image.Resampling.LANCZOS)
-        resized.save(linux_dir / f"{size}x{size}.png")
+        out_path = linux_dir / f"{size}x{size}.png"
+        run_magick(["convert", "-background", "none", str(master_svg), "-resize", f"{size}x{size}", str(out_path)])
 
-    # 3. macOS iconset (PNGs)
-    # macOS typically uses .icns which is a specific container. 
-    # Pillow doesn't write .icns natively well.
-    # We will generate the iconset folder structure which can be converted using iconutil on macOS.
+    # 4. macOS iconset (PNGs)
     macos_dir = assets_dir / "macos.iconset"
     macos_dir.mkdir(exist_ok=True)
     
@@ -56,11 +74,8 @@ def generate_icons():
     
     for size, scale, name in macos_configs:
         final_size = size * scale
-        if final_size > 1024:
-            continue # Skip if master is smaller, but our master is 1024, so it's fine.
-            
-        resized = img.resize((final_size, final_size), Image.Resampling.LANCZOS)
-        resized.save(macos_dir / name)
+        out_path = macos_dir / name
+        run_magick(["convert", "-background", "none", str(master_svg), "-resize", f"{final_size}x{final_size}", str(out_path)])
 
     print("Icon generation complete.")
 

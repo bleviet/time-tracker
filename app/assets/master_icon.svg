@@ -1,0 +1,17 @@
+<svg width="1024px" height="1024px" viewBox="0 0 64 64" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>Time Tracker Icon</title>
+    <defs>
+        <linearGradient x1="0%" y1="0%" x2="100%" y2="100%" id="linearGradient-1">
+            <stop stop-color="#4A90E2" offset="0%"></stop>
+            <stop stop-color="#9013FE" offset="100%"></stop>
+        </linearGradient>
+    </defs>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="Group">
+            <circle id="Oval" fill="url(#linearGradient-1)" cx="32" cy="32" r="32"></circle>
+            <path d="M32,14 C22.0588745,14 14,22.0588745 14,32 C14,41.9411255 22.0588745,50 32,50 C41.9411255,50 50,41.9411255 50,32 C50,22.0588745 41.9411255,14 32,14 Z M32,10 C44.1502645,10 54,19.8497355 54,32 C54,44.1502645 44.1502645,54 32,54 C19.8497355,54 10,44.1502645 10,32 C10,19.8497355 19.8497355,10 32,10 Z" id="Shape" fill="#FFFFFF" fill-rule="nonzero"></path>
+            <path d="M30,8 C31.1045695,8 32,8.8954305 32,10 L32,14 C32,15.1045695 31.1045695,16 30,16 C28.8954305,16 28,15.1045695 28,14 L28,10 C28,8.8954305 28.8954305,8 30,8 Z" id="Path" fill="#FFFFFF"></path>
+            <polygon id="Triangle" fill="#FFFFFF" transform="translate(33.000000, 32.000000) rotate(90.000000) translate(-33.000000, -32.000000) " points="33 26 39 38 27 38"></polygon>
+        </g>
+    </g>
+</svg>
