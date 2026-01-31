@@ -313,6 +313,9 @@ class HistoryWindow(QWidget):
         legend_layout.addStretch()
         calendar_layout.addLayout(legend_layout)
 
+        # Add spacing below the calendar section
+        calendar_layout.addSpacing(15)
+
         left_splitter.addWidget(calendar_widget)
 
         # Work Regulations Panel
