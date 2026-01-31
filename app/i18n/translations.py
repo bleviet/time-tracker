@@ -29,6 +29,11 @@ TRANSLATIONS = {
         "main.stop": "Stop",
         "main.history": "History",
         "main.settings": "Settings",
+        "main.video_tutorial": "Video tutorial",
+        "main.video_title": "Video Tutorial",
+        "main.video_missing": "Video file not found: {path}",
+        "main.video_unavailable": "Video playback is unavailable: {error}",
+        "main.video_playback_error": "Unable to play the video tutorial.",
 
         # History window
         "history.title": "Monthly Overview",
@@ -338,6 +343,11 @@ TRANSLATIONS = {
         "main.stop": "Stopp",
         "main.history": "Verlauf",
         "main.settings": "Einstellungen",
+        "main.video_tutorial": "Videoanleitung",
+        "main.video_title": "Videoanleitung",
+        "main.video_missing": "Videodatei nicht gefunden: {path}",
+        "main.video_unavailable": "Videowiedergabe ist nicht verfügbar: {error}",
+        "main.video_playback_error": "Das Video kann nicht abgespielt werden.",
 
         # History window
         "history.title": "Monatsübersicht",

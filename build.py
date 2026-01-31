@@ -19,6 +19,7 @@ def main():
     add_data = [
         ("app/assets", "app/assets"),
         ("app/resources/templates", "app/resources/templates"),
+        ("docs/tutorial/video", "docs/tutorial/video"),
     ]
     
     # Construct PyInstaller arguments

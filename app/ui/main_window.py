@@ -9,15 +9,17 @@ import asyncio
 from typing import List, Optional
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout, QLineEdit,
-    QLabel, QCompleter, QMessageBox, QApplication, QPushButton
+    QLabel, QCompleter, QMessageBox, QApplication, QPushButton,
+    QDialog, QVBoxLayout
 )
-from PySide6.QtCore import Qt, Signal, QStringListModel, QEvent
+from PySide6.QtCore import Qt, Signal, QStringListModel, QEvent, QUrl
 from PySide6.QtGui import QFont, QScreen, QShortcut, QKeySequence, QPalette
 
 from app.domain.models import Task
 from app.services import TimerService
 from app.infra.repository import TaskRepository
 from app.i18n import tr
+from app.utils import get_resource_path
 
 
 class MainWindow(QMainWindow):
@@ -178,6 +180,14 @@ class MainWindow(QMainWindow):
         self.settings_btn.setToolTip(tr("main.settings"))
         layout.addWidget(self.settings_btn)
 
+        # Video tutorial button (Help)
+        self.video_btn = QPushButton("?")
+        self.video_btn.setFixedSize(30, 30)
+        self.video_btn.clicked.connect(self._show_video_tutorial)
+        self.video_btn.setCursor(Qt.PointingHandCursor)
+        self.video_btn.setToolTip(tr("main.video_tutorial"))
+        layout.addWidget(self.video_btn)
+
         # Minimize button
         self.minimize_button = QPushButton("▼")
         self.minimize_button.setFixedSize(30, 30)
@@ -275,6 +285,22 @@ class MainWindow(QMainWindow):
                 border: none;
                 color: {colors['icon']};
                 font-size: 18px;
+                border-radius: 15px;
+            }}
+            QPushButton:hover {{
+                background-color: {colors['hover_bg']};
+                color: {colors['icon_hover']};
+            }}
+        """)
+
+        # Video tutorial button
+        self.video_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: transparent;
+                border: none;
+                color: {colors['icon']};
+                font-size: 16px;
+                font-weight: bold;
                 border-radius: 15px;
             }}
             QPushButton:hover {{
@@ -397,6 +423,53 @@ class MainWindow(QMainWindow):
         else:
             # If stopped, try to start task from input
             self._on_task_entered()
+
+    def _show_video_tutorial(self) -> None:
+        """Open the video tutorial in an internal player dialog."""
+        video_path = get_resource_path("docs/tutorial/video/TimeTracker_VideoTutorial.mp4")
+        if not video_path.exists():
+            QMessageBox.warning(
+                self,
+                tr("error"),
+                tr("main.video_missing").format(path=video_path),
+            )
+            return
+
+        try:
+            from PySide6.QtMultimedia import QMediaPlayer, QAudioOutput
+            from PySide6.QtMultimediaWidgets import QVideoWidget
+        except Exception as e:
+            QMessageBox.warning(
+                self,
+                tr("error"),
+                tr("main.video_unavailable").format(error=e),
+            )
+            return
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle(tr("main.video_title"))
+        dialog.setAttribute(Qt.WA_DeleteOnClose, True)
+        dialog.setWindowFlag(Qt.WindowMaximizeButtonHint, True)
+
+        layout = QVBoxLayout(dialog)
+        video_widget = QVideoWidget(dialog)
+        layout.addWidget(video_widget)
+
+        player = QMediaPlayer(dialog)
+        audio_output = QAudioOutput(dialog)
+        player.setAudioOutput(audio_output)
+        player.setVideoOutput(video_widget)
+        player.setSource(QUrl.fromLocalFile(str(video_path)))
+
+        def _handle_video_error(*_args) -> None:
+            QMessageBox.warning(self, tr("error"), tr("main.video_playback_error"))
+
+        player.errorOccurred.connect(_handle_video_error)
+        dialog.finished.connect(player.stop)
+
+        dialog.resize(900, 506)
+        player.play()
+        dialog.exec()
 
     def _on_task_entered(self):
         """Handle Enter key press in task input"""
@@ -561,12 +634,13 @@ class MainWindow(QMainWindow):
         """Update strings when language changes"""
         self.setWindowTitle(tr("main.title"))
         self.task_input.setPlaceholderText(tr("main.task_placeholder"))
-        
+
         if self.timer_service.is_tracking():
             self.toggle_btn.setToolTip(tr("main.stop"))
         else:
             self.toggle_btn.setToolTip(tr("main.start"))
-            
+
         self.report_btn.setToolTip(tr("main.history"))
         self.settings_btn.setToolTip(tr("main.settings"))
+        self.video_btn.setToolTip(tr("main.video_tutorial"))
         self.minimize_button.setToolTip(tr("tray.show_window"))

@@ -93,6 +93,10 @@ The application displays a **modern, unified widget** at the **bottom right** of
     -   Arrow Down (▼) icon
     -   Hides widget to system tray
 
+5.  **Video Tutorial Button**
+  -   Play icon button
+  -   Opens the built-in video tutorial player
+
 **Widget Features:**
 - Modern rounded design with subtle transparency
 - Always stays on top of other windows
