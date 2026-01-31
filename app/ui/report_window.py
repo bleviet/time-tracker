@@ -171,6 +171,7 @@ class ReportWindow(QDialog):
 
         # State
         self.selected_date = datetime.date.today().replace(day=1)
+        self.report_history = {}
 
 
         # UI Setup
