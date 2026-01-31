@@ -245,6 +245,11 @@ class SystemTrayApp:
             # Perform scheduled backup if needed
             self._check_scheduled_backup()
 
+            # Setup periodic backup check (every 30 minutes)
+            self.backup_timer = QTimer()
+            self.backup_timer.timeout.connect(self._check_scheduled_backup)
+            self.backup_timer.start(30 * 60 * 1000)  # 30 minutes in milliseconds
+
         except Exception as e:
             QMessageBox.critical(None, "Initialization Error",
                                f"Failed to initialize application:\n{e}")
