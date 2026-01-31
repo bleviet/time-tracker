@@ -52,6 +52,22 @@ class StatusCalendarWidget(QCalendarWidget):
         self.setGridVisible(True)
         self.setVerticalHeaderFormat(QCalendarWidget.NoVerticalHeader)
 
+        # Style calendar cells: border highlight on hover/selection instead of background change
+        self.setStyleSheet("""
+            QCalendarWidget QAbstractItemView {
+                selection-background-color: transparent;
+                selection-color: palette(text);
+            }
+            QCalendarWidget QAbstractItemView::item:selected {
+                background-color: transparent;
+                border: 2px solid #1976d2;
+            }
+            QCalendarWidget QAbstractItemView::item:hover {
+                background-color: transparent;
+                border: 2px solid #90caf9;
+            }
+        """)
+
         # Initialize theme-aware colors
         self._update_theme_colors()
 
