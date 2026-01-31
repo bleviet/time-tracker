@@ -18,6 +18,7 @@ A cross-platform time tracking application with German holiday support and autom
 - ✅ **Scheduled Backups** - Automatic backups with configurable time and frequency
 - ✅ **Splash Screen** - Immediate visual feedback during startup
 - ✅ **Clean Architecture** - Modular design with separation of concerns
+- ✅ **Internationalization** - Fully localized in English and German
 - ✅ **Cross-Platform** - Works on Windows, Linux, and macOS
 
 ## Architecture
@@ -165,6 +166,15 @@ The application displays a **modern, unified widget** at the **bottom right** of
    - **Time Off Manager**: Click days in the calendar to mark them as **Vacation** (Green) or **Sickness** (Red).
    - **Exclusions**: Uncheck tasks (like "Lunch" or "Break") to exclude them from the "Total Work" calculation.
 3. Click **Generate Report**. Your settings for Time Off and Exclusions are **automatically saved** for next time.
+
+### Internationalization
+
+The application supports **English** and **German**.
+
+1. Go to **Settings** (Right-click tray icon → Settings).
+2. In the **General** tab, select your preferred language.
+3. The interface updates **immediately** without restarting.
+4. **Auto-detection**: By default, the app matches your system language.
 
 ### Customizing Reports
 

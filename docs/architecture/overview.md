@@ -13,4 +13,6 @@ This application follows **Clean Architecture** principles:
 └── main.py              # Entry point
 ```
 
-For detailed design concepts and technology choices, please see [Concept](concept.md).
+For detailed design concepts and technology choices, please see:
+- [Concept](concept.md)
+- [Internationalization](internationalization.md)

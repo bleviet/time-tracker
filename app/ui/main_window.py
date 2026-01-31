@@ -17,6 +17,7 @@ from PySide6.QtGui import QFont, QScreen, QShortcut, QKeySequence, QPalette
 from app.domain.models import Task
 from app.services import TimerService
 from app.infra.repository import TaskRepository
+from app.i18n import tr
 
 
 class MainWindow(QMainWindow):
@@ -42,7 +43,7 @@ class MainWindow(QMainWindow):
         self._current_theme: str = "auto"  # Track explicit theme setting
 
         # Window settings for minimal always-on-top widget
-        self.setWindowTitle("Time Tracker")
+        self.setWindowTitle(tr("main.title"))
         self.setWindowFlags(
             Qt.WindowStaysOnTopHint |
             Qt.FramelessWindowHint |
@@ -120,7 +121,7 @@ class MainWindow(QMainWindow):
 
         # Task input with autocomplete
         self.task_input = QLineEdit()
-        self.task_input.setPlaceholderText("Task name...")
+        self.task_input.setPlaceholderText(tr("main.task_placeholder"))
         self.task_input.returnPressed.connect(self._on_task_entered)
 
         # Modern styling for task input
@@ -142,7 +143,7 @@ class MainWindow(QMainWindow):
         self.toggle_btn.setFixedSize(30, 30)
         self.toggle_btn.clicked.connect(self._toggle_tracking)
         self.toggle_btn.setCursor(Qt.PointingHandCursor)
-        self.toggle_btn.setToolTip("Start Tracking")
+        self.toggle_btn.setToolTip(tr("main.start"))
         layout.addWidget(self.toggle_btn)
 
         # Separator line
@@ -166,7 +167,7 @@ class MainWindow(QMainWindow):
         self.report_btn.setFixedSize(30, 30)
         self.report_btn.clicked.connect(self.show_history.emit)
         self.report_btn.setCursor(Qt.PointingHandCursor)
-        self.report_btn.setToolTip("Monthly Overview")
+        self.report_btn.setToolTip(tr("main.history"))
         layout.addWidget(self.report_btn)
 
         # Settings button
@@ -174,14 +175,14 @@ class MainWindow(QMainWindow):
         self.settings_btn.setFixedSize(30, 30)
         self.settings_btn.clicked.connect(self._open_settings)
         self.settings_btn.setCursor(Qt.PointingHandCursor)
-        self.settings_btn.setToolTip("Settings")
+        self.settings_btn.setToolTip(tr("main.settings"))
         layout.addWidget(self.settings_btn)
 
         # Minimize button
         self.minimize_button = QPushButton("▼")
         self.minimize_button.setFixedSize(30, 30)
         self.minimize_button.clicked.connect(self.hide)
-        self.minimize_button.setToolTip("Hide to tray (Esc)")
+        self.minimize_button.setToolTip(tr("tray.show_window"))  # Reuse 'Show Window' or add 'Minimize' key if needed
         layout.addWidget(self.minimize_button)
 
         # Make window compact with rounded appearance
@@ -318,7 +319,7 @@ class MainWindow(QMainWindow):
         """Apply play button style (green)"""
         colors = self._get_theme_colors()
         self.toggle_btn.setText("▶")
-        self.toggle_btn.setToolTip("Start Tracking")
+        self.toggle_btn.setToolTip(tr("main.start"))
         self.toggle_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: transparent;
@@ -336,7 +337,7 @@ class MainWindow(QMainWindow):
     def _apply_pause_button_style(self):
         """Apply pause button style (orange)"""
         self.toggle_btn.setText("⏸")
-        self.toggle_btn.setToolTip("Pause Tracking")
+        self.toggle_btn.setToolTip(tr("main.stop"))
         self.toggle_btn.setStyleSheet("""
             QPushButton {
                 background-color: transparent;
@@ -459,7 +460,7 @@ class MainWindow(QMainWindow):
     def _on_task_stopped(self, task_id: int, total_seconds: int):
         """Update UI when task stops"""
         self.task_input.clear()
-        self.task_input.setPlaceholderText("Task name...")
+        self.task_input.setPlaceholderText(tr("main.task_placeholder"))
         self.timer_display.setText("00:00:00")
 
         # Update styling for Play state
@@ -511,23 +512,23 @@ class MainWindow(QMainWindow):
         menu = QMenu(self)
 
         if self.timer_service.is_tracking():
-            stop_action = QAction("Stop Tracking", self)
+            stop_action = QAction(tr("main.stop"), self)
             stop_action.triggered.connect(self._stop_current_task)
             menu.addAction(stop_action)
 
             menu.addSeparator()
 
-        history_action = QAction("View History", self)
+        history_action = QAction(tr("main.history"), self)
         history_action.triggered.connect(self.show_history.emit)
         menu.addAction(history_action)
 
         menu.addSeparator()
 
-        hide_action = QAction("Hide to Tray", self)
+        hide_action = QAction(tr("tray.show_window"), self)
         hide_action.triggered.connect(self.hide)
         menu.addAction(hide_action)
 
-        quit_action = QAction("Quit", self)
+        quit_action = QAction(tr("tray.quit"), self)
         quit_action.triggered.connect(self._quit)
         menu.addAction(quit_action)
 
@@ -555,3 +556,17 @@ class MainWindow(QMainWindow):
         if event.type() == QEvent.PaletteChange:
             self.update_theme()
         super().changeEvent(event)
+
+    def retranslate_ui(self):
+        """Update strings when language changes"""
+        self.setWindowTitle(tr("main.title"))
+        self.task_input.setPlaceholderText(tr("main.task_placeholder"))
+        
+        if self.timer_service.is_tracking():
+            self.toggle_btn.setToolTip(tr("main.stop"))
+        else:
+            self.toggle_btn.setToolTip(tr("main.start"))
+            
+        self.report_btn.setToolTip(tr("main.history"))
+        self.settings_btn.setToolTip(tr("main.settings"))
+        self.minimize_button.setToolTip(tr("tray.show_window"))

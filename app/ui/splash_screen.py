@@ -11,6 +11,7 @@ from PySide6.QtGui import QPixmap, QPainter, QColor, QFont
 from PySide6.QtCore import Qt
 
 from app.utils import get_resource_path
+from app.i18n import tr, detect_system_language, set_language
 
 
 class SplashScreen(QSplashScreen):
@@ -24,6 +25,10 @@ class SplashScreen(QSplashScreen):
     """
 
     def __init__(self):
+        # Initialize language for splash screen based on system
+        # (Preferences will be loaded later, but this gives a good first guess)
+        set_language(detect_system_language())
+        
         # Create splash pixmap
         pixmap = self._create_splash_pixmap()
         super().__init__(pixmap)
@@ -63,14 +68,14 @@ class SplashScreen(QSplashScreen):
         font.setPointSize(16)
         font.setBold(True)
         painter.setFont(font)
-        painter.drawText(0, 85, width, 30, Qt.AlignCenter, "Time Tracker")
+        painter.drawText(0, 85, width, 30, Qt.AlignCenter, tr("app.name"))
 
         # Draw loading text area (will be updated with showMessage)
         font.setPointSize(10)
         font.setBold(False)
         painter.setFont(font)
         painter.setPen(QColor("#90caf9"))
-        painter.drawText(0, 115, width, 25, Qt.AlignCenter, "Starting...")
+        painter.drawText(0, 115, width, 25, Qt.AlignCenter, tr("splash.starting"))
 
         painter.end()
         return pixmap

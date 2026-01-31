@@ -28,6 +28,7 @@ from app.domain.models import Task
 from app.infra.repository import TaskRepository
 from app.services.matrix_report_service import ReportConfiguration
 from app.infra.config import get_settings
+from app.i18n import tr
 
 
 class ReportWindow(QDialog):
@@ -37,7 +38,7 @@ class ReportWindow(QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Generate Monthly Report")
+        self.setWindowTitle(tr("report.title"))
         self.resize(600, 500)
         self.setModal(True)
 
@@ -184,7 +185,7 @@ class ReportWindow(QDialog):
 
         # --- Header: Period Selection ---
         # --- Header: Period Selection ---
-        header_grp = QGroupBox("Report Period")
+        header_grp = QGroupBox(tr("report.period"))
         header_layout = QHBoxLayout()
 
         self.btn_prev = QPushButton("<")
@@ -229,7 +230,7 @@ class ReportWindow(QDialog):
         self.status_label = QLabel("")
         footer_layout.addWidget(self.status_label)
 
-        self.generate_btn = QPushButton("Generate Report")
+        self.generate_btn = QPushButton(tr("report.generate"))
         self.generate_btn.setStyleSheet("""
             QPushButton {
                 background-color: #f5f5f5;
@@ -257,23 +258,23 @@ class ReportWindow(QDialog):
         layout = QVBoxLayout(self.config_tab)
 
         # Template Selection
-        tmpl_grp = QGroupBox("Report Type")
+        tmpl_grp = QGroupBox(tr("report.type"))
         tmpl_layout = QHBoxLayout()
         self.template_combo = QComboBox()
         self.template_combo.addItems(["Monthly Report"])
-        tmpl_layout.addWidget(QLabel("Template:"))
+        tmpl_layout.addWidget(QLabel(tr("report.template")))
         tmpl_layout.addWidget(self.template_combo)
         tmpl_grp.setLayout(tmpl_layout)
         layout.addWidget(tmpl_grp)
 
         # Output File
-        file_grp = QGroupBox("Output Settings")
+        file_grp = QGroupBox(tr("report.output"))
         file_layout = QHBoxLayout()
 
-        self.path_input = QLabel("No file selected")
+        self.path_input = QLabel(tr("report.no_file"))
         self.path_input.setStyleSheet("color: #666; font-style: italic;")
 
-        btn_browse = QPushButton("Browse...")
+        btn_browse = QPushButton(tr("report.browse"))
         btn_browse.clicked.connect(self._browse_file)
 
         file_layout.addWidget(self.path_input)
@@ -285,7 +286,7 @@ class ReportWindow(QDialog):
 
     def _browse_file(self):
         filename, _ = QFileDialog.getSaveFileName(
-            self, "Save Report",
+            self, tr("report.save_title"),
             f"report_{self.selected_date.strftime('%m_%Y')}.csv",
             "CSV Files (*.csv)"
         )
@@ -383,8 +384,8 @@ class ReportWindow(QDialog):
     def _generate_report(self):
         """Gather config and run generation"""
         output_path = self.path_input.text()
-        if "No file" in output_path:
-            QMessageBox.warning(self, "Error", "Please select an output file.")
+        if "No file" in output_path or tr("report.no_file") in output_path:
+            QMessageBox.warning(self, tr("error"), tr("report.select_file_error"))
             return
 
         # Create Config (no exclusions - handled automatically by service)
@@ -396,7 +397,7 @@ class ReportWindow(QDialog):
         )
 
         # 4. Generate
-        self.status_label.setText("Saving & Generating...")
+        self.status_label.setText(tr("report.generating"))
         self.generate_btn.setEnabled(False)
 
         # Save settings for persistence
@@ -429,12 +430,12 @@ class ReportWindow(QDialog):
             with open(path, 'w', encoding='utf-8') as f:
                 f.write(content)
 
-            self.status_label.setText("Done!")
-            QMessageBox.information(self, "Success", f"Report saved to:\n{path}")
+            self.status_label.setText(tr("report.done"))
+            QMessageBox.information(self, tr("report.success"), tr("report.saved_to", path=path))
             self.close()
 
         except Exception as e:
-            self.status_label.setText("Error")
-            QMessageBox.critical(self, "Error", f"Failed to generate report:\n{e}")
+            self.status_label.setText(tr("error"))
+            QMessageBox.critical(self, tr("error"), tr("report.failed", error=e))
         finally:
             self.generate_btn.setEnabled(True)

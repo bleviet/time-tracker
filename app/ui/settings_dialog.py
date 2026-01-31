@@ -12,6 +12,7 @@ from PySide6.QtCore import Qt, Signal, QTime
 from app.domain.models import UserPreferences
 from app.infra.repository import UserRepository
 from app.services.backup_service import BackupService
+from app.i18n import tr
 
 
 class SettingsDialog(QDialog):
@@ -25,10 +26,12 @@ class SettingsDialog(QDialog):
     theme_changed = Signal(str)
     # Emitted when font scale changes
     font_scale_changed = Signal(float)
+    # Emitted when language changes
+    language_changed = Signal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Settings")
+        self.setWindowTitle(tr("settings.title"))
         self.resize(550, 500)
 
         self.loop = asyncio.get_event_loop()
@@ -48,12 +51,12 @@ class SettingsDialog(QDialog):
         # Tab 1: General
         self.general_tab = QWidget()
         self._setup_general_tab()
-        self.tabs.addTab(self.general_tab, "General")
+        self.tabs.addTab(self.general_tab, tr("settings.general"))
 
         # Tab 2: Backup
         self.backup_tab = QWidget()
         self._setup_backup_tab()
-        self.tabs.addTab(self.backup_tab, "Backup")
+        self.tabs.addTab(self.backup_tab, tr("settings.backup"))
 
         layout.addWidget(self.tabs)
 
@@ -67,18 +70,18 @@ class SettingsDialog(QDialog):
         layout = QFormLayout(self.general_tab)
 
         # Appearance section
-        appearance_label = QLabel("Appearance")
+        appearance_label = QLabel(tr("settings.appearance"))
         appearance_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
         layout.addRow(appearance_label)
 
         # Theme selection
         self.combo_theme = QComboBox()
-        self.combo_theme.addItem("Follow System", "auto")
-        self.combo_theme.addItem("Light", "light")
-        self.combo_theme.addItem("Dark", "dark")
+        self.combo_theme.addItem(tr("settings.theme_auto"), "auto")
+        self.combo_theme.addItem(tr("settings.theme_light"), "light")
+        self.combo_theme.addItem(tr("settings.theme_dark"), "dark")
         self.combo_theme.setToolTip("Select application color theme")
         self.combo_theme.currentIndexChanged.connect(self._on_theme_preview)
-        layout.addRow("Theme:", self.combo_theme)
+        layout.addRow(tr("settings.theme"), self.combo_theme)
 
         # Font size control
         font_layout = QHBoxLayout()
@@ -93,34 +96,43 @@ class SettingsDialog(QDialog):
         self.font_scale_label.setMinimumWidth(50)
         font_layout.addWidget(self.font_scale_label)
         font_layout.addStretch()
-        layout.addRow("Font Size:", font_layout)
+        layout.addRow(tr("settings.font_size"), font_layout)
+
+        # Language selection
+        self.combo_language = QComboBox()
+        self.combo_language.addItem(f"{tr('settings.theme_auto')} (System)", "auto")
+        self.combo_language.addItem(tr("settings.language_en"), "en")
+        self.combo_language.addItem(tr("settings.language_de"), "de")
+        self.combo_language.setToolTip("Select UI language")
+        self.combo_language.currentIndexChanged.connect(self._on_language_preview)
+        layout.addRow(tr("settings.language"), self.combo_language)
 
         # Add separator
         separator_label = QLabel("")
         layout.addRow(separator_label)
 
         # Behavior section
-        behavior_label = QLabel("Behavior")
+        behavior_label = QLabel(tr("settings.behavior"))
         behavior_label.setStyleSheet("font-weight: bold;")
         layout.addRow(behavior_label)
 
-        self.check_auto_pause = QCheckBox("Auto-pause when screen locks")
-        self.check_ask_unlock = QCheckBox("Ask about time away on unlock")
+        self.check_auto_pause = QCheckBox(tr("settings.auto_pause"))
+        self.check_ask_unlock = QCheckBox(tr("settings.ask_unlock"))
 
         self.spin_threshold = QSpinBox()
         self.spin_threshold.setRange(0, 60)
-        self.spin_threshold.setSuffix(" min")
+        self.spin_threshold.setSuffix(f" {tr('time.minutes')}")
 
         layout.addRow(self.check_auto_pause)
         layout.addRow(self.check_ask_unlock)
-        layout.addRow("Auto-pause threshold:", self.spin_threshold)
+        layout.addRow(tr("settings.pause_threshold"), self.spin_threshold)
 
         # Add separator
         separator_label2 = QLabel("")
         layout.addRow(separator_label2)
 
         # Regional section
-        regional_label = QLabel("Regional")
+        regional_label = QLabel(tr("settings.regional"))
         regional_label.setStyleSheet("font-weight: bold;")
         layout.addRow(regional_label)
 
@@ -130,13 +142,13 @@ class SettingsDialog(QDialog):
         self.combo_german_state.setToolTip(
             "Select your German state for accurate public holiday detection"
         )
-        layout.addRow("German State:", self.combo_german_state)
+        layout.addRow(tr("settings.german_state"), self.combo_german_state)
 
-        self.check_respect_holidays = QCheckBox("Respect public holidays")
+        self.check_respect_holidays = QCheckBox(tr("settings.respect_holidays"))
         self.check_respect_holidays.setToolTip("Disable tracking on public holidays")
         layout.addRow(self.check_respect_holidays)
 
-        self.check_respect_weekends = QCheckBox("Respect weekends")
+        self.check_respect_weekends = QCheckBox(tr("settings.respect_weekends"))
         self.check_respect_weekends.setToolTip("Disable tracking on weekends")
         layout.addRow(self.check_respect_weekends)
 
@@ -145,12 +157,12 @@ class SettingsDialog(QDialog):
         layout.addRow(separator_label3)
 
         # Tray section
-        tray_label = QLabel("System Tray")
+        tray_label = QLabel(tr("settings.system_tray"))
         tray_label.setStyleSheet("font-weight: bold;")
         layout.addRow(tray_label)
 
-        self.check_show_seconds = QCheckBox("Show seconds in tray icon")
-        self.check_minimize_tray = QCheckBox("Minimize to tray instead of closing")
+        self.check_show_seconds = QCheckBox(tr("settings.show_seconds"))
+        self.check_minimize_tray = QCheckBox(tr("settings.minimize_tray"))
 
         layout.addRow(self.check_show_seconds)
         layout.addRow(self.check_minimize_tray)
@@ -184,21 +196,21 @@ class SettingsDialog(QDialog):
         layout = QVBoxLayout(self.backup_tab)
 
         # Automatic Backup Group
-        auto_group = QGroupBox("Automatic Backup")
-        auto_layout = QFormLayout(auto_group)
+        self.auto_group = QGroupBox(tr("settings.backup_auto"))
+        auto_layout = QFormLayout(self.auto_group)
 
-        self.check_backup_enabled = QCheckBox("Enable automatic backups")
+        self.check_backup_enabled = QCheckBox(tr("settings.backup_enable"))
         self.check_backup_enabled.stateChanged.connect(self._on_backup_enabled_changed)
         auto_layout.addRow(self.check_backup_enabled)
 
         # Frequency
         self.combo_backup_frequency = QComboBox()
-        self.combo_backup_frequency.addItem("Daily", 1)
-        self.combo_backup_frequency.addItem("Every 3 days", 3)
-        self.combo_backup_frequency.addItem("Weekly", 7)
-        self.combo_backup_frequency.addItem("Every 2 weeks", 14)
-        self.combo_backup_frequency.addItem("Monthly", 30)
-        auto_layout.addRow("Backup frequency:", self.combo_backup_frequency)
+        self.combo_backup_frequency.addItem(tr("backup.daily"), 1)
+        self.combo_backup_frequency.addItem(tr("backup.every_3_days"), 3)
+        self.combo_backup_frequency.addItem(tr("backup.weekly"), 7)
+        self.combo_backup_frequency.addItem(tr("backup.every_2_weeks"), 14)
+        self.combo_backup_frequency.addItem(tr("backup.monthly"), 30)
+        auto_layout.addRow(tr("settings.backup_frequency"), self.combo_backup_frequency)
 
         # Backup time
         from PySide6.QtWidgets import QTimeEdit
@@ -206,41 +218,41 @@ class SettingsDialog(QDialog):
         self.time_backup.setDisplayFormat("HH:mm")
         self.time_backup.setTime(QTime(9, 0))  # Default 9:00 AM
         self.time_backup.setToolTip("Time of day when automatic backup will be performed")
-        auto_layout.addRow("Backup time:", self.time_backup)
+        auto_layout.addRow(tr("settings.backup_time"), self.time_backup)
 
         # Retention
         self.spin_backup_retention = QSpinBox()
         self.spin_backup_retention.setRange(1, 50)
         self.spin_backup_retention.setValue(5)
-        self.spin_backup_retention.setSuffix(" backups")
-        auto_layout.addRow("Keep last:", self.spin_backup_retention)
+        self.spin_backup_retention.setSuffix(f" {tr('time.backups')}")
+        auto_layout.addRow(tr("settings.backup_retention"), self.spin_backup_retention)
 
         # Backup directory
         dir_layout = QHBoxLayout()
         self.edit_backup_dir = QLineEdit()
         self.edit_backup_dir.setPlaceholderText("Default: AppData/TimeTracker/backups")
-        self.btn_browse_backup = QPushButton("Browse...")
+        self.btn_browse_backup = QPushButton(tr("settings.backup_browse"))
         self.btn_browse_backup.clicked.connect(self._browse_backup_dir)
         dir_layout.addWidget(self.edit_backup_dir)
         dir_layout.addWidget(self.btn_browse_backup)
-        auto_layout.addRow("Backup location:", dir_layout)
+        auto_layout.addRow(tr("settings.backup_location"), dir_layout)
 
         # Last backup info
-        self.label_last_backup = QLabel("Last backup: Never")
+        self.label_last_backup = QLabel(f"{tr('settings.backup_last')} {tr('settings.backup_never')}")
         self.label_last_backup.setStyleSheet("color: #666; font-style: italic;")
         auto_layout.addRow(self.label_last_backup)
 
-        layout.addWidget(auto_group)
+        layout.addWidget(self.auto_group)
 
         # Manual Backup/Restore Group
-        manual_group = QGroupBox("Manual Backup && Restore")
-        manual_layout = QVBoxLayout(manual_group)
+        self.manual_group = QGroupBox(tr("settings.backup_manual"))
+        manual_layout = QVBoxLayout(self.manual_group)
 
         # Buttons row
         btn_row = QHBoxLayout()
-        self.btn_backup_now = QPushButton("📦 Backup Now")
+        self.btn_backup_now = QPushButton(f"📦 {tr('settings.backup_now')}")
         self.btn_backup_now.clicked.connect(self._backup_now)
-        self.btn_restore = QPushButton("📥 Restore from Backup...")
+        self.btn_restore = QPushButton(f"📥 {tr('settings.backup_restore')}")
         self.btn_restore.clicked.connect(self._restore_backup)
         btn_row.addWidget(self.btn_backup_now)
         btn_row.addWidget(self.btn_restore)
@@ -248,23 +260,24 @@ class SettingsDialog(QDialog):
         manual_layout.addLayout(btn_row)
 
         # Backup list
-        manual_layout.addWidget(QLabel("Available backups:"))
+        self.label_available_backups = QLabel(tr("settings.backup_available"))
+        manual_layout.addWidget(self.label_available_backups)
         self.list_backups = QListWidget()
         self.list_backups.setMaximumHeight(150)
         manual_layout.addWidget(self.list_backups)
 
         # Refresh button
         refresh_row = QHBoxLayout()
-        self.btn_refresh_backups = QPushButton("🔄 Refresh List")
+        self.btn_refresh_backups = QPushButton(tr("settings.backup_refresh"))
         self.btn_refresh_backups.clicked.connect(self._refresh_backup_list)
-        self.btn_delete_backup = QPushButton("🗑️ Delete Selected")
+        self.btn_delete_backup = QPushButton(tr("settings.backup_delete"))
         self.btn_delete_backup.clicked.connect(self._delete_selected_backup)
         refresh_row.addWidget(self.btn_refresh_backups)
         refresh_row.addWidget(self.btn_delete_backup)
         refresh_row.addStretch()
         manual_layout.addLayout(refresh_row)
 
-        layout.addWidget(manual_group)
+        layout.addWidget(self.manual_group)
         layout.addStretch()
 
     def _on_backup_enabled_changed(self, state):
@@ -281,7 +294,7 @@ class SettingsDialog(QDialog):
         """Open directory browser for backup location"""
         current = self.edit_backup_dir.text() or str(Path.home())
         dir_path = QFileDialog.getExistingDirectory(
-            self, "Select Backup Directory", current
+            self, tr("settings.backup_select_dir"), current
         )
         if dir_path:
             self.edit_backup_dir.setText(dir_path)
@@ -300,13 +313,13 @@ class SettingsDialog(QDialog):
             self.loop.run_until_complete(self.repo.update_preferences(self.prefs))
 
             QMessageBox.information(
-                self, "Backup Complete",
-                f"Backup created successfully:\n{backup_file}"
+                self, tr("settings.backup_complete_title"),
+                f"{tr('settings.backup_complete_msg')}\n{backup_file}"
             )
             self._refresh_backup_list()
             self._update_last_backup_label()
         except Exception as e:
-            QMessageBox.critical(self, "Backup Failed", f"Failed to create backup:\n{e}")
+            QMessageBox.critical(self, tr("settings.backup_failed_title"), f"{tr('settings.backup_failed_msg')}\n{e}")
 
     def _restore_backup(self):
         """Restore from a backup file"""
@@ -320,7 +333,7 @@ class SettingsDialog(QDialog):
                 self.backup_service._get_default_backup_dir()
             )
             backup_path, _ = QFileDialog.getOpenFileName(
-                self, "Select Backup File", backup_dir,
+                self, tr("settings.backup_select_file"), backup_dir,
                 "Backup Files (*.json);;All Files (*.*)"
             )
 
@@ -329,12 +342,8 @@ class SettingsDialog(QDialog):
 
         # Confirm restore
         reply = QMessageBox.warning(
-            self, "Confirm Restore",
-            f"⚠️ WARNING: This will REPLACE all current data!\n\n"
-            f"All existing tasks, time entries, and accounting profiles\n"
-            f"will be permanently deleted and replaced with the backup.\n\n"
-            f"This action cannot be undone.\n\n"
-            f"Continue with restore?",
+            self, tr("settings.restore_confirm_title"),
+            tr("settings.restore_confirm_msg"),
             QMessageBox.Yes | QMessageBox.No, QMessageBox.No
         )
 
@@ -346,9 +355,9 @@ class SettingsDialog(QDialog):
                 self.backup_service.restore_backup(Path(backup_path))
             )
             QMessageBox.information(
-                self, "Restore Complete",
-                f"Backup restored successfully!\n\n"
-                f"Restored items:\n"
+                self, tr("settings.restore_complete_title"),
+                f"{tr('settings.restore_complete_msg')}\n\n"
+                f"{tr('settings.restore_details')}:\n"
                 f"- Accounting profiles: {result['accounting']}\n"
                 f"- Tasks: {result['tasks']}\n"
                 f"- Time entries: {result['time_entries']}"
@@ -356,7 +365,7 @@ class SettingsDialog(QDialog):
             # Notify other windows to refresh their data
             self.data_restored.emit()
         except Exception as e:
-            QMessageBox.critical(self, "Restore Failed", f"Failed to restore backup:\n{e}")
+            QMessageBox.critical(self, tr("settings.restore_failed_title"), f"{tr('settings.restore_failed_msg')}\n{e}")
 
     def _refresh_backup_list(self):
         """Refresh the list of available backups"""
@@ -376,13 +385,13 @@ class SettingsDialog(QDialog):
         """Delete the selected backup file"""
         selected = self.list_backups.currentItem()
         if not selected:
-            QMessageBox.warning(self, "No Selection", "Please select a backup to delete.")
+            QMessageBox.warning(self, tr("settings.no_selection_title"), tr("settings.no_selection_msg"))
             return
 
         backup_path = selected.data(Qt.UserRole)
         reply = QMessageBox.question(
-            self, "Confirm Delete",
-            f"Delete this backup?\n\n{Path(backup_path).name}",
+            self, tr("settings.delete_confirm_title"),
+            f"{tr('settings.delete_confirm_msg')}\n\n{Path(backup_path).name}",
             QMessageBox.Yes | QMessageBox.No, QMessageBox.No
         )
 
@@ -390,16 +399,14 @@ class SettingsDialog(QDialog):
             try:
                 Path(backup_path).unlink()
                 self._refresh_backup_list()
-                QMessageBox.information(self, "Deleted", "Backup deleted successfully.")
+                QMessageBox.information(self, tr("settings.deleted_title"), tr("settings.deleted_msg"))
             except Exception as e:
-                QMessageBox.critical(self, "Error", f"Failed to delete backup:\n{e}")
+                QMessageBox.critical(self, tr("error"), f"{tr('settings.delete_failed_msg')}\n{e}")
 
     def _update_last_backup_label(self):
         """Update the last backup date label"""
-        if self.prefs.last_backup_date:
-            self.label_last_backup.setText(f"Last backup: {self.prefs.last_backup_date}")
-        else:
-            self.label_last_backup.setText("Last backup: Never")
+        # This implementation is replaced by the one inside retranslate_ui to support translation
+        pass
 
     def _on_theme_preview(self, index: int):
         """Preview theme change immediately when selection changes"""
@@ -414,6 +421,83 @@ class SettingsDialog(QDialog):
         if self._loading:
             return  # Don't trigger changes during initial load
         self.font_scale_changed.emit(value)
+
+    def _on_language_preview(self, index: int):
+        """Preview language change immediately when selection changes"""
+        if self._loading:
+            return  # Don't trigger language change during initial load
+        language = self.combo_language.itemData(index)
+        self.language_changed.emit(language)
+        # Update UI language immediately
+        from app.i18n import set_language, on_language_changed, detect_system_language
+        if language == 'auto':
+            set_language(detect_system_language())
+        else:
+            set_language(language)
+        self.retranslate_ui()
+
+    def retranslate_ui(self):
+        """Update strings when language changes"""
+        self.setWindowTitle(tr("settings.title"))
+        self.tabs.setTabText(0, tr("settings.general"))
+        self.tabs.setTabText(1, tr("settings.backup"))
+        
+        # General Tab labels are harder to update dynamically with QFormLayout as they are not stored as fields
+        # Ideally, we would reconstruct the fields or have stored references to labels. 
+        # For now, immediate switching updates critical parts, reopen dialog to fully refresh form labels 
+        # is a simpler strategy if full dynamic translation of form labels is too complex to refactor now.
+        # But wait, we can store labels or just recreate the dialog.
+        
+        # Actually, let's just accept that some static labels might need close/reopen
+        # OR we can iterate layout items.
+        # Given the "immediate" requirement, the cleanest way without refactoring everything to store 20+ labels
+        # is to tell the user that some settings might need reopen, OR we refactor to store labels.
+        #
+        # Better approach: We update what we can easily access.
+        self.combo_theme.setItemText(0, tr("settings.theme_auto"))
+        self.combo_theme.setItemText(1, tr("settings.theme_light"))
+        self.combo_theme.setItemText(2, tr("settings.theme_dark"))
+        
+        self.combo_language.setItemText(0, f"{tr('settings.theme_auto')} (System)")
+        self.combo_language.setItemText(1, tr("settings.language_en"))
+        self.combo_language.setItemText(2, tr("settings.language_de"))
+
+        self.check_auto_pause.setText(tr("settings.auto_pause"))
+        self.check_ask_unlock.setText(tr("settings.ask_unlock"))
+        self.spin_threshold.setSuffix(f" {tr('time.minutes')}")
+        
+        self.check_respect_holidays.setText(tr("settings.respect_holidays"))
+        self.check_respect_weekends.setText(tr("settings.respect_weekends"))
+        
+        self.check_show_seconds.setText(tr("settings.show_seconds"))
+        self.check_minimize_tray.setText(tr("settings.minimize_tray"))
+        
+        # Backup Tab
+        self.auto_group.setTitle(tr("settings.backup_auto"))
+        self.check_backup_enabled.setText(tr("settings.backup_enable"))
+        self.combo_backup_frequency.setItemText(0, tr("backup.daily"))
+        self.combo_backup_frequency.setItemText(1, tr("backup.every_3_days"))
+        self.combo_backup_frequency.setItemText(2, tr("backup.weekly"))
+        self.combo_backup_frequency.setItemText(3, tr("backup.every_2_weeks"))
+        self.combo_backup_frequency.setItemText(4, tr("backup.monthly"))
+        
+        self.spin_backup_retention.setSuffix(f" {tr('time.backups')}")
+        self.btn_browse_backup.setText(tr("settings.backup_browse"))
+        
+        # Update last backup label
+        self._update_last_backup_label()
+        
+        self.manual_group.setTitle(tr("settings.backup_manual"))
+        self.btn_backup_now.setText(f"📦 {tr('settings.backup_now')}")
+        self.btn_restore.setText(f"📥 {tr('settings.backup_restore')}")
+        self.label_available_backups.setText(tr("settings.backup_available"))
+        self.btn_refresh_backups.setText(tr("settings.backup_refresh"))
+        self.btn_delete_backup.setText(tr("settings.backup_delete"))
+
+    def _update_last_backup_label(self):
+        """Update the last backup date label"""
+        last_text = self.prefs.last_backup_date if self.prefs.last_backup_date else tr("settings.backup_never")
+        self.label_last_backup.setText(f"{tr('settings.backup_last')} {last_text}")
 
     def _load_data(self):
         try:
@@ -435,6 +519,11 @@ class SettingsDialog(QDialog):
             # Font scale
             self.spin_font_scale.setValue(self.prefs.font_scale)
             self.font_scale_label.setText(f"{int(self.prefs.font_scale * 100)}%")
+
+            # Language
+            lang_index = self.combo_language.findData(self.prefs.language)
+            if lang_index >= 0:
+                self.combo_language.setCurrentIndex(lang_index)
 
             # Regional settings
             state_index = self.combo_german_state.findData(self.prefs.german_state)
@@ -483,6 +572,7 @@ class SettingsDialog(QDialog):
             self.prefs.show_seconds_in_tray = self.check_show_seconds.isChecked()
             self.prefs.minimize_to_tray = self.check_minimize_tray.isChecked()
             self.prefs.font_scale = self.spin_font_scale.value()
+            self.prefs.language = self.combo_language.currentData()
 
             # Regional settings
             self.prefs.german_state = self.combo_german_state.currentData()

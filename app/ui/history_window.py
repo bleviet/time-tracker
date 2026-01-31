@@ -19,6 +19,7 @@ from app.ui.task_dialogs import TaskManagementDialog
 from app.ui.report_window import ReportWindow
 from app.infra.config import get_settings
 from app.services.calendar_service import CalendarService
+from app.i18n import tr, on_language_changed
 
 
 class StatusCalendarWidget(QCalendarWidget):
@@ -240,7 +241,7 @@ class HistoryWindow(QWidget):
 
     def __init__(self, loop=None, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Monthly Overview")
+        self.setWindowTitle(tr("history.title"))
         self.resize(1100, 850)
 
         # Note: Global theme is managed by qdarktheme via SystemTrayApp
@@ -267,6 +268,12 @@ class HistoryWindow(QWidget):
         self.undo_shortcut = QShortcut(QKeySequence("Ctrl+Z"), self)
         self.undo_shortcut.activated.connect(self._undo_last_change)
 
+        # Register for language changes
+        on_language_changed(self._on_language_change)
+
+    def _on_language_change(self, lang):
+        self.retranslate_ui()
+
     def _setup_ui(self):
         layout = QHBoxLayout(self)
 
@@ -291,22 +298,22 @@ class HistoryWindow(QWidget):
 
         # Legend for day types
         legend_layout = QHBoxLayout()
-        legend_label = QLabel("Legend:")
-        legend_label.setStyleSheet("font-weight: bold; margin-right: 10px;")
-        legend_layout.addWidget(legend_label)
+        self.legend_label = QLabel(tr("history.legend"))
+        self.legend_label.setStyleSheet("font-weight: bold; margin-right: 10px;")
+        legend_layout.addWidget(self.legend_label)
 
         # Store legend labels for dynamic theme updates
-        self.vacation_legend = QLabel("  Vacation  ")
+        self.vacation_legend = QLabel(f"  {tr('status.vacation')}  ")
         legend_layout.addWidget(self.vacation_legend)
 
-        self.sickness_legend = QLabel("  Sickness  ")
+        self.sickness_legend = QLabel(f"  {tr('status.sickness')}  ")
         legend_layout.addWidget(self.sickness_legend)
 
-        self.holiday_legend = QLabel("  🏳 Holiday  ")
+        self.holiday_legend = QLabel(f"  🏳 {tr('status.holiday')}  ")
         self.holiday_legend.setToolTip("Official German holidays")
         legend_layout.addWidget(self.holiday_legend)
 
-        self.hint_label = QLabel("(Right-click date to cycle)")
+        self.hint_label = QLabel(tr("history.legend_hint"))
         legend_layout.addWidget(self.hint_label)
 
         # Apply initial theme-aware colors
@@ -321,10 +328,10 @@ class HistoryWindow(QWidget):
         left_splitter.addWidget(calendar_widget)
 
         # Work Regulations Panel
-        regulations_group = QGroupBox("Work Regulations")
-        regulations_group.setCheckable(False)
+        self.regulations_group = QGroupBox(tr("regulations.title"))
+        self.regulations_group.setCheckable(False)
         # Use minimal styling that works with both themes
-        regulations_group.setStyleSheet("""
+        self.regulations_group.setStyleSheet("""
             QGroupBox {
                 font-weight: bold;
                 border: 1px solid palette(mid);
@@ -338,16 +345,17 @@ class HistoryWindow(QWidget):
                 padding: 0 5px;
             }
         """)
-        regulations_layout = QVBoxLayout(regulations_group)
+        regulations_layout = QVBoxLayout(self.regulations_group)
         regulations_layout.setSpacing(8)
 
         # Daily Target
         target_layout = QHBoxLayout()
-        target_layout.addWidget(QLabel("Daily Target:"))
+        self.label_daily_target = QLabel(tr("regulations.daily_target"))
+        target_layout.addWidget(self.label_daily_target)
         self.spin_work_hours = QDoubleSpinBox()
         self.spin_work_hours.setRange(1.0, 24.0)
         self.spin_work_hours.setSingleStep(0.5)
-        self.spin_work_hours.setSuffix(" h")
+        self.spin_work_hours.setSuffix(f" {tr('time.hours_short')}")
         self.spin_work_hours.setMinimumWidth(80)
         self.spin_work_hours.setValue(8.0)  # Default
         self.spin_work_hours.valueChanged.connect(self._save_regulations)
@@ -374,19 +382,19 @@ class HistoryWindow(QWidget):
             }
         """
 
-        self.check_enable_compliance = QCheckBox("Enable German Compliance (10h limit)")
+        self.check_enable_compliance = QCheckBox(tr("regulations.enable_compliance"))
         self.check_enable_compliance.setToolTip("Warns when daily hours exceed 10 hours")
         self.check_enable_compliance.setStyleSheet(checkbox_style)
         self.check_enable_compliance.stateChanged.connect(self._save_regulations)
         regulations_layout.addWidget(self.check_enable_compliance)
 
-        self.check_breaks = QCheckBox("Check Mandatory Breaks")
+        self.check_breaks = QCheckBox(tr("regulations.check_breaks"))
         self.check_breaks.setToolTip("Warn if >6h without 30m break")
         self.check_breaks.setStyleSheet(checkbox_style)
         self.check_breaks.stateChanged.connect(self._save_regulations)
         regulations_layout.addWidget(self.check_breaks)
 
-        self.check_rest = QCheckBox("Check Rest Periods (11h)")
+        self.check_rest = QCheckBox(tr("regulations.check_rest"))
         self.check_rest.setToolTip("Warn if <11h between work days")
         self.check_rest.setStyleSheet(checkbox_style)
         self.check_rest.stateChanged.connect(self._save_regulations)
@@ -400,7 +408,7 @@ class HistoryWindow(QWidget):
         regulations_layout.addWidget(self.violations_label)
         regulations_layout.addStretch()  # Push content to top
 
-        left_splitter.addWidget(regulations_group)
+        left_splitter.addWidget(self.regulations_group)
 
         # Set initial splitter sizes
         left_splitter.setSizes([400, 300])
@@ -433,7 +441,10 @@ class HistoryWindow(QWidget):
         # Table
         self.table = QTableWidget()
         self.table.setColumnCount(5)
-        self.table.setHorizontalHeaderLabels(["Task", "Start", "End", "Duration", "Notes"])
+        self.table.setHorizontalHeaderLabels([
+            tr("history.task"), tr("history.start"), tr("history.end"), 
+            tr("history.duration"), tr("history.notes")
+        ])
         self.table.verticalHeader().setVisible(False)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
@@ -453,7 +464,7 @@ class HistoryWindow(QWidget):
         task_table_layout.addWidget(self.table)
 
         # Add Manual Entry Button (below task table)
-        self.add_btn = QPushButton("+ Add Manual Entry")
+        self.add_btn = QPushButton(f"+ {tr('history.add_entry')}")
         self.add_btn.clicked.connect(self._open_manual_entry)
         self.add_btn.setCursor(Qt.PointingHandCursor)
         self.add_btn.setStyleSheet("""
@@ -484,13 +495,13 @@ class HistoryWindow(QWidget):
         summary_layout.setContentsMargins(0, 0, 0, 0)
 
         # Daily Summary Section
-        self.summary_header = QLabel("Daily Summary")
+        self.summary_header = QLabel(tr("history.daily_summary"))
         self.summary_header.setStyleSheet("font-size: 14px; font-weight: bold; margin-bottom: 5px;")
         summary_layout.addWidget(self.summary_header)
 
         self.summary_table = QTableWidget()
         self.summary_table.setColumnCount(2)
-        self.summary_table.setHorizontalHeaderLabels(["Task", "Duration"])
+        self.summary_table.setHorizontalHeaderLabels([tr("history.task"), tr("history.duration")])
         self.summary_table.verticalHeader().setVisible(False)
         self.summary_table.setSelectionMode(QTableWidget.NoSelection)
         self.summary_table.setFocusPolicy(Qt.NoFocus)
@@ -513,7 +524,7 @@ class HistoryWindow(QWidget):
         # Buttons
         btn_layout = QHBoxLayout()
 
-        self.accounting_btn = QPushButton("Manage Accounting")
+        self.accounting_btn = QPushButton(tr("history.manage_accounting"))
         self.accounting_btn.clicked.connect(self._open_accounting)
         self.accounting_btn.setStyleSheet("""
             QPushButton {
@@ -531,7 +542,7 @@ class HistoryWindow(QWidget):
 
 
 
-        self.tasks_btn = QPushButton("Manage Tasks")
+        self.tasks_btn = QPushButton(tr("history.manage_tasks"))
         self.tasks_btn.clicked.connect(self._open_tasks)
         self.tasks_btn.setStyleSheet("""
             QPushButton {
@@ -550,7 +561,7 @@ class HistoryWindow(QWidget):
         btn_layout.addWidget(self.accounting_btn)
         btn_layout.addWidget(self.tasks_btn)
 
-        self.report_btn = QPushButton("📊 Generate Report")
+        self.report_btn = QPushButton(f"📊 {tr('history.generate_report')}")
         self.report_btn.clicked.connect(self._generate_report)
         self.report_btn.setStyleSheet("""
             QPushButton {
@@ -575,6 +586,44 @@ class HistoryWindow(QWidget):
 
         right_layout.addLayout(btn_layout)
         layout.addLayout(right_layout, stretch=3) # Make right side wider
+
+    def retranslate_ui(self):
+        """Update UI strings on language change"""
+        self.setWindowTitle(tr("history.title"))
+        
+        # Legend
+        self.legend_label.setText(tr("history.legend"))
+        self.vacation_legend.setText(f"  {tr('status.vacation')}  ")
+        self.sickness_legend.setText(f"  {tr('status.sickness')}  ")
+        self.holiday_legend.setText(f"  🏳 {tr('status.holiday')}  ")
+        self.hint_label.setText(tr("history.legend_hint"))
+
+        # Regulations
+        self.regulations_group.setTitle(tr("regulations.title"))
+        self.label_daily_target.setText(tr("regulations.daily_target"))
+        self.spin_work_hours.setSuffix(f" {tr('time.hours_short')}")
+        self.check_enable_compliance.setText(tr("regulations.enable_compliance"))
+        self.check_breaks.setText(tr("regulations.check_breaks"))
+        self.check_rest.setText(tr("regulations.check_rest"))
+
+        # Tables
+        self.table.setHorizontalHeaderLabels([
+            tr("history.task"), tr("history.start"), tr("history.end"), 
+            tr("history.duration"), tr("history.notes")
+        ])
+        
+        self.summary_header.setText(tr("history.daily_summary"))
+        self.summary_table.setHorizontalHeaderLabels([tr("history.task"), tr("history.duration")])
+
+        # Buttons
+        self.add_btn.setText(f"+ {tr('history.add_entry')}")
+        self.accounting_btn.setText(tr("history.manage_accounting"))
+        self.tasks_btn.setText(tr("history.manage_tasks"))
+        self.report_btn.setText(f"📊 {tr('history.generate_report')}")
+
+        # Update date label format
+        if hasattr(self, 'calendar'):
+             self._on_date_selected()
 
     def _is_dark_mode(self) -> bool:
         """Detect if dark mode is active based on palette"""
@@ -793,8 +842,8 @@ class HistoryWindow(QWidget):
             return
 
         menu = QMenu(self)
-        edit_action = QAction("Edit", self)
-        delete_action = QAction("Delete", self)
+        edit_action = QAction(tr("action.edit"), self)
+        delete_action = QAction(tr("action.delete"), self)
 
         edit_action.triggered.connect(self._edit_current_entry)
         delete_action.triggered.connect(self._delete_current_entry)
@@ -828,20 +877,54 @@ class HistoryWindow(QWidget):
         if row < 0 or row >= len(self.current_entries):
             return
 
-        entry = self.current_entries[row]
-
         reply = QMessageBox.question(
-            self, "Confirm Delete",
-            "Are you sure you want to delete this entry?",
+            self, tr("action.delete"),
+            tr("history.delete_confirm"),
             QMessageBox.Yes | QMessageBox.No, QMessageBox.No
         )
+        if reply != QMessageBox.Yes:
+            return
 
-        if reply == QMessageBox.Yes:
-            try:
-                self.loop.run_until_complete(self.entry_repo.delete(entry.id))
-                self._on_date_selected() # Refresh
-            except Exception as e:
-                QMessageBox.critical(self, "Error", f"Failed to delete entry: {e}")
+        entry = self.current_entries[row]
+        try:
+            self.loop.run_until_complete(self.entry_repo.delete(entry.id))
+            self._save_state_for_undo()
+            self._on_date_selected()  # Refresh
+        except Exception as e:
+            QMessageBox.critical(self, tr("error"), f"{tr('history.delete_failed')}: {e}")
+
+    def retranslate_ui(self):
+        """Update strings when language changes"""
+        self.setWindowTitle(tr("history.title"))
+        self.legend_label.setText(tr("history.legend"))
+        self.vacation_legend.setText(f"  {tr('status.vacation')}  ")
+        self.sickness_legend.setText(f"  {tr('status.sickness')}  ")
+        self.holiday_legend.setText(f"  🏳 {tr('status.holiday')}  ")
+        self.hint_label.setText(tr("history.legend_hint"))
+
+        self.regulations_group.setTitle(tr("regulations.title"))
+        self.label_daily_target.setText(tr("regulations.daily_target"))
+        self.check_enable_compliance.setText(tr("regulations.enable_compliance"))
+        self.check_breaks.setText(tr("regulations.check_breaks"))
+        self.check_rest.setText(tr("regulations.check_rest"))
+
+        self.table.setHorizontalHeaderLabels([
+            tr("history.task"), tr("history.start"), tr("history.end"),
+            tr("history.duration"), tr("history.notes")
+        ])
+        self.add_btn.setText(f"+ {tr('history.add_entry')}")
+        
+        self.summary_header.setText(tr("history.daily_summary"))
+        self.summary_table.setHorizontalHeaderLabels([tr("history.task"), tr("history.duration")])
+        
+        self.accounting_btn.setText(tr("history.manage_accounting"))
+        self.tasks_btn.setText(tr("history.manage_tasks"))
+        self.report_btn.setText(f"📊 {tr('history.generate_report')}")
+        
+        # Refresh current view to update date label and violations text if needed
+        self._on_date_selected()
+
+
 
     def refresh_data(self):
         """Public method to refresh all data (called after backup restore)"""
@@ -1091,7 +1174,7 @@ class HistoryWindow(QWidget):
     def _on_date_selected(self):
         """Handle date selection from calendar"""
         qdate = self.calendar.selectedDate()
-        self.date_label.setText(qdate.toString("dddd, MMMM d, yyyy"))
+        self.date_label.setText(QLocale().toString(qdate, QLocale.LongFormat))
 
         # Fetch entries asynchronously
         self.loop.run_until_complete(self._refresh_current_date_entries())

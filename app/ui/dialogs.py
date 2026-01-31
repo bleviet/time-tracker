@@ -14,6 +14,7 @@ from PySide6.QtCore import Qt, QDate, QTime
 
 from app.domain.models import Task, TimeEntry, Accounting
 from app.infra.repository import AccountingRepository
+from app.i18n import tr
 
 
 class InterruptionDialog(QDialog):
@@ -23,7 +24,7 @@ class InterruptionDialog(QDialog):
     
     def __init__(self, elapsed_minutes: float, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Welcome Back")
+        self.setWindowTitle(tr("interruption.title"))
         self.choice = "ignore"  # default
         self.setModal(True)
         
@@ -31,23 +32,23 @@ class InterruptionDialog(QDialog):
         layout = QVBoxLayout()
         
         # Message
-        message_label = QLabel(f"You were away for {elapsed_minutes:.1f} minutes.")
+        message_label = QLabel(tr("interruption.message", minutes=elapsed_minutes))
         message_label.setStyleSheet("font-size: 14px; font-weight: bold;")
         layout.addWidget(message_label)
-        
-        question_label = QLabel("How should we handle this time?")
+
+        question_label = QLabel(tr("interruption.question"))
         layout.addWidget(question_label)
-        
+
         layout.addSpacing(20)
-        
+
         # Buttons
         btn_layout = QHBoxLayout()
-        
-        btn_break = QPushButton("It was a Break\n(Ignore time)")
+
+        btn_break = QPushButton(tr("interruption.btn_break"))
         btn_break.setMinimumHeight(60)
         btn_break.clicked.connect(lambda: self.set_choice("ignore"))
-        
-        btn_work = QPushButton("I was working\n(Add to current task)")
+
+        btn_work = QPushButton(tr("interruption.btn_work"))
         btn_work.setMinimumHeight(60)
         btn_work.clicked.connect(lambda: self.set_choice("track"))
         
@@ -71,25 +72,25 @@ class TaskEditDialog(QDialog):
     """
     def __init__(self, task: Task, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Edit Task")
+        self.setWindowTitle(tr("task_edit.title"))
         self.task = task
         self.repo = AccountingRepository()
         self.loop = asyncio.get_event_loop()
         self.accounting_profiles: List[Accounting] = []
-        
+
         self._setup_ui()
         self._load_data()
-        
+
     def _setup_ui(self):
         layout = QVBoxLayout(self)
         form = QFormLayout()
-        
+
         self.name_edit = QLineEdit(self.task.name)
-        form.addRow("Name:", self.name_edit)
-        
+        form.addRow(tr("task_edit.name"), self.name_edit)
+
         self.accounting_combo = QComboBox()
-        self.accounting_combo.addItem("None", None)
-        form.addRow("Accounting:", self.accounting_combo)
+        self.accounting_combo.addItem(tr("task_edit.none"), None)
+        form.addRow(tr("task_edit.accounting"), self.accounting_combo)
         
         layout.addLayout(form)
         
@@ -103,7 +104,7 @@ class TaskEditDialog(QDialog):
         try:
             self.accounting_profiles = self.loop.run_until_complete(self.repo.get_all_active())
             self.accounting_combo.clear()
-            self.accounting_combo.addItem("None", None)
+            self.accounting_combo.addItem(tr("task_edit.none"), None)
             
             idx_to_select = 0
             for i, acc in enumerate(self.accounting_profiles):
@@ -131,42 +132,42 @@ class ManualEntryDialog(QDialog):
     
     def __init__(self, tasks: List[Task], parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Add Manual Entry")
+        self.setWindowTitle(tr("manual_entry.title_add"))
         self.tasks = tasks
         self.setModal(True)
         self.setMinimumWidth(400)
-        
+
         self._setup_ui()
-    
+
     def _setup_ui(self):
         layout = QVBoxLayout(self)
         form_layout = QFormLayout()
-        
+
         # Task Selection
         self.task_combo = QComboBox()
         self.task_combo.setEditable(True)  # Allow creating new tasks
         for task in self.tasks:
             self.task_combo.addItem(task.name, task.id)
-        form_layout.addRow("Task:", self.task_combo)
-        
+        form_layout.addRow(tr("manual_entry.task"), self.task_combo)
+
         # Date
         self.date_edit = QDateEdit(QDate.currentDate())
         self.date_edit.setCalendarPopup(True)
-        form_layout.addRow("Date:", self.date_edit)
-        
+        form_layout.addRow(tr("manual_entry.date"), self.date_edit)
+
         # Start Time
         self.start_time = QTimeEdit(QTime.currentTime().addSecs(-3600)) # Default 1 hr ago
-        form_layout.addRow("Start Time:", self.start_time)
-        
+        form_layout.addRow(tr("manual_entry.start_time"), self.start_time)
+
         # End Time
         self.end_time = QTimeEdit(QTime.currentTime())
-        form_layout.addRow("End Time:", self.end_time)
-        
+        form_layout.addRow(tr("manual_entry.end_time"), self.end_time)
+
         # Notes
         self.notes_edit = QTextEdit()
-        self.notes_edit.setPlaceholderText("Optional notes...")
+        self.notes_edit.setPlaceholderText(tr("manual_entry.notes_placeholder"))
         self.notes_edit.setMaximumHeight(80)
-        form_layout.addRow("Notes:", self.notes_edit)
+        form_layout.addRow(tr("manual_entry.notes"), self.notes_edit)
         
         layout.addLayout(form_layout)
         
@@ -178,7 +179,7 @@ class ManualEntryDialog(QDialog):
     
     def set_data(self, entry: TimeEntry):
         """Pre-fill dialog with existing entry data"""
-        self.setWindowTitle("Edit Entry")
+        self.setWindowTitle(tr("manual_entry.title_edit"))
         
         # Set Task
         index = self.task_combo.findData(entry.task_id)
@@ -208,11 +209,11 @@ class ManualEntryDialog(QDialog):
         now = datetime.now()
         
         if start_dt >= end_dt:
-            QMessageBox.warning(self, "Invalid Time", "End time must be after start time.")
+            QMessageBox.warning(self, tr("manual_entry.invalid_time_title"), tr("manual_entry.invalid_time_msg_order"))
             return
-            
+
         if end_dt > now:
-            QMessageBox.warning(self, "Invalid Time", "Cannot add entries in the future.")
+            QMessageBox.warning(self, tr("manual_entry.invalid_time_title"), tr("manual_entry.invalid_time_msg_future"))
             return
             
         self.accept()

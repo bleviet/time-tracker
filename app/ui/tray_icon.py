@@ -23,6 +23,7 @@ from app.infra.os_hooks import create_system_monitor
 from app.infra.db import init_db
 from app.infra.repository import TaskRepository
 from app.domain.models import Task
+from app.i18n import tr, set_language, detect_system_language, on_language_changed
 from .dialogs import InterruptionDialog
 from .main_window import MainWindow
 from .history_window import HistoryWindow
@@ -70,6 +71,12 @@ class SystemTrayApp:
 
         # Apply font scale
         self._apply_font_scale(self.user_prefs.font_scale)
+
+        # Apply language
+        self._apply_language(self.user_prefs.language)
+
+        # Register for language change notifications
+        on_language_changed(self._on_language_changed)
 
         # Services
         self.calendar = CalendarService(
@@ -173,6 +180,37 @@ class SystemTrayApp:
         """
         self._apply_font_scale(scale)
 
+    def _apply_language(self, language: str):
+        """Apply the specified language.
+
+        Args:
+            language: 'en', 'de', or 'auto' (detect from system)
+        """
+        if language == 'auto':
+            language = detect_system_language()
+        set_language(language)
+
+    def change_language(self, language: str):
+        """Change the application language at runtime.
+
+        Args:
+            language: 'en', 'de', or 'auto' (detect from system)
+        """
+        self._apply_language(language)
+
+    def _on_language_changed(self, language: str):
+        """Handle language change notification - update all UI elements."""
+        # Update tray menu
+        self.setup_menu()
+        # Update tooltip
+        self.tray_icon.setToolTip(tr("app.ready"))
+        # Update main window if open
+        if self.main_window:
+            self.main_window.retranslate_ui()
+        # Update history window if open
+        if self.history_window:
+            self.history_window.retranslate_ui()
+
     def _connect_signals(self):
         """Connect service signals to UI handlers"""
         # Timer signals
@@ -275,14 +313,14 @@ class SystemTrayApp:
         menu = QMenu()
 
         # Show Main Window
-        show_action = QAction("Show Main Window", self.app)
+        show_action = QAction(tr("tray.show_window"), self.app)
         show_action.triggered.connect(self._show_main_window)
         menu.addAction(show_action)
 
         menu.addSeparator()
 
         # Quit Action
-        quit_action = QAction("Quit", self.app)
+        quit_action = QAction(tr("tray.quit"), self.app)
         quit_action.triggered.connect(self._quit_application)
         menu.addAction(quit_action)
 
@@ -295,6 +333,7 @@ class SystemTrayApp:
             self.settings_window.data_restored.connect(self._on_data_restored)
             self.settings_window.theme_changed.connect(self.change_theme)
             self.settings_window.font_scale_changed.connect(self.change_font_scale)
+            self.settings_window.language_changed.connect(self.change_language)
         self.settings_window.show()
         self.settings_window.activateWindow()
 

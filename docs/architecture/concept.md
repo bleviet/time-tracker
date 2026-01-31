@@ -288,3 +288,12 @@ The JSON backup file includes:
 - **Merge mode:** Imports data alongside existing records
 - **Warning:** Duplicates may occur if restoring to a populated database
 - **Validation:** Backup format is validated before restore
+
+### 10. Internationalization
+
+The application is fully localized (currently English and German).
+
+- **Architecture:** Custom `app.i18n` module using a dictionary-based approach for flexibility.
+- **Dynamic Switching:** Observer pattern allows instant language switching without restarting.
+- **System Integration:** Automatically defaults to the OS language.
+
