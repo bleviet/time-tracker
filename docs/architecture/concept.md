@@ -226,7 +226,23 @@ The history window features a flexible, resizable 4-panel layout:
   - Daily Summary & Violations (Bottom)
 - **Splitters:** Allow resizing vertical and horizontal sections to customize the view.
 
-### 7. Database Backup & Restore
+### 8. UI Customization
+
+#### **Theme Support**
+The application supports three theme modes:
+- **Light:** Clean white background with dark text
+- **Dark:** Dark background with light text, easier on the eyes
+- **Auto:** Follows the system theme preference (Windows/macOS dark mode)
+
+Theme changes apply immediately without requiring application restart.
+
+#### **Font Scaling**
+For high-DPI displays (e.g., 4K monitors), the application offers font scaling:
+- **Range:** 50% to 200% of the default system font size
+- **Live preview:** Changes apply immediately when adjusted in Settings
+- **Persistence:** Font scale preference is saved and restored on startup
+
+### 9. Database Backup & Restore
 
 #### **Why JSON for Backups?**
 - **Human-readable:** Users can inspect and manually edit backup files if needed
@@ -238,8 +254,9 @@ The history window features a flexible, resizable 4-panel layout:
 
 **Automatic Backups:**
 - Configurable frequency: Daily, every 3 days, weekly, bi-weekly, or monthly
+- **Scheduled time:** User-configurable time of day for backup execution (default: 09:00)
 - Automatic cleanup: Retains a configurable number of recent backups (default: 5)
-- Scheduled check: Runs at application startup
+- Scheduled check: Runs at application startup and periodically every 30 minutes
 
 **Manual Backups:**
 - On-demand backup creation from Settings dialog

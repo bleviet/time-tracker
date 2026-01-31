@@ -13,6 +13,10 @@ A cross-platform time tracking application with German holiday support and autom
 - ✅ **Overtime Tracking** - Automatic daily/total overtime calculation in reports
 - ✅ **Auto-Save** - Periodic background saves every 60 seconds for data safety
 - ✅ **Advanced Reporting** - Monthly reports, Accounting exports, and Sick/Vacation leave management
+- ✅ **Theme Support** - Light, Dark, or Auto (follows system) theme selection
+- ✅ **Font Scaling** - Adjustable font size (50% - 200%) for high-DPI displays
+- ✅ **Scheduled Backups** - Automatic backups with configurable time and frequency
+- ✅ **Splash Screen** - Immediate visual feedback during startup
 - ✅ **Clean Architecture** - Modular design with separation of concerns
 - ✅ **Cross-Platform** - Works on Windows, Linux, and macOS
 
