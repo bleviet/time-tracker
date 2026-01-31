@@ -23,6 +23,8 @@ class SettingsDialog(QDialog):
     data_restored = Signal()
     # Emitted when theme changes, so the app can apply the new theme
     theme_changed = Signal(str)
+    # Emitted when font scale changes
+    font_scale_changed = Signal(float)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -77,6 +79,21 @@ class SettingsDialog(QDialog):
         self.combo_theme.setToolTip("Select application color theme")
         self.combo_theme.currentIndexChanged.connect(self._on_theme_preview)
         layout.addRow("Theme:", self.combo_theme)
+
+        # Font size control
+        font_layout = QHBoxLayout()
+        self.spin_font_scale = QDoubleSpinBox()
+        self.spin_font_scale.setRange(0.5, 2.0)
+        self.spin_font_scale.setSingleStep(0.1)
+        self.spin_font_scale.setValue(1.0)
+        self.spin_font_scale.setToolTip("Adjust font size (0.5 = 50%, 1.0 = 100%, 2.0 = 200%)")
+        self.spin_font_scale.valueChanged.connect(self._on_font_scale_preview)
+        font_layout.addWidget(self.spin_font_scale)
+        self.font_scale_label = QLabel("100%")
+        self.font_scale_label.setMinimumWidth(50)
+        font_layout.addWidget(self.font_scale_label)
+        font_layout.addStretch()
+        layout.addRow("Font Size:", font_layout)
 
         # Add separator
         separator_label = QLabel("")
@@ -332,6 +349,13 @@ class SettingsDialog(QDialog):
         theme = self.combo_theme.currentData()
         self.theme_changed.emit(theme)
 
+    def _on_font_scale_preview(self, value: float):
+        """Preview font scale change and update label"""
+        self.font_scale_label.setText(f"{int(value * 100)}%")
+        if self._loading:
+            return  # Don't trigger changes during initial load
+        self.font_scale_changed.emit(value)
+
     def _load_data(self):
         try:
             self._loading = True  # Prevent theme changes during load
@@ -348,6 +372,10 @@ class SettingsDialog(QDialog):
             self.spin_threshold.setValue(self.prefs.auto_pause_threshold_minutes)
             self.check_show_seconds.setChecked(self.prefs.show_seconds_in_tray)
             self.check_minimize_tray.setChecked(self.prefs.minimize_to_tray)
+
+            # Font scale
+            self.spin_font_scale.setValue(self.prefs.font_scale)
+            self.font_scale_label.setText(f"{int(self.prefs.font_scale * 100)}%")
 
             # Backup
             self.check_backup_enabled.setChecked(self.prefs.backup_enabled)
@@ -382,6 +410,7 @@ class SettingsDialog(QDialog):
             self.prefs.auto_pause_threshold_minutes = self.spin_threshold.value()
             self.prefs.show_seconds_in_tray = self.check_show_seconds.isChecked()
             self.prefs.minimize_to_tray = self.check_minimize_tray.isChecked()
+            self.prefs.font_scale = self.spin_font_scale.value()
 
             # Backup settings
             self.prefs.backup_enabled = self.check_backup_enabled.isChecked()

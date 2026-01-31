@@ -12,7 +12,7 @@ import datetime
 from pathlib import Path
 from typing import Optional
 from PySide6.QtWidgets import QApplication, QSystemTrayIcon, QMenu, QMessageBox
-from PySide6.QtGui import QIcon, QPixmap, QColor, QAction, QKeySequence, QShortcut
+from PySide6.QtGui import QIcon, QPixmap, QColor, QAction, QKeySequence, QShortcut, QFont
 from PySide6.QtCore import QTimer, Qt
 import qdarktheme
 
@@ -67,6 +67,9 @@ class SystemTrayApp:
         # Apply theme based on user preference from repository
         self.splash.update_status("Applying theme...")
         self._apply_theme(self.user_prefs.theme)
+
+        # Apply font scale
+        self._apply_font_scale(self.user_prefs.font_scale)
 
         # Services
         self.calendar = CalendarService(
@@ -147,6 +150,28 @@ class SystemTrayApp:
         if self.history_window:
             self.history_window.update_theme()
         # Settings dialog uses standard Qt widgets that auto-update with palette
+
+    def _apply_font_scale(self, scale: float):
+        """Apply font scale to the application.
+
+        Args:
+            scale: Font scale factor (1.0 = 100%, 0.5 = 50%, 2.0 = 200%)
+        """
+        font = self.app.font()
+        # Get the default system font size (typically 9-10 pt)
+        default_size = QFont().pointSize()
+        if default_size <= 0:
+            default_size = 9  # Fallback default
+        font.setPointSizeF(default_size * scale)
+        self.app.setFont(font)
+
+    def change_font_scale(self, scale: float):
+        """Change the application font scale at runtime.
+
+        Args:
+            scale: Font scale factor (1.0 = 100%, 0.5 = 50%, 2.0 = 200%)
+        """
+        self._apply_font_scale(scale)
 
     def _connect_signals(self):
         """Connect service signals to UI handlers"""
@@ -264,6 +289,7 @@ class SystemTrayApp:
             self.settings_window = SettingsDialog()
             self.settings_window.data_restored.connect(self._on_data_restored)
             self.settings_window.theme_changed.connect(self.change_theme)
+            self.settings_window.font_scale_changed.connect(self.change_font_scale)
         self.settings_window.show()
         self.settings_window.activateWindow()
 

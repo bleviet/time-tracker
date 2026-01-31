@@ -37,9 +37,9 @@ class StatusCalendarWidget(QCalendarWidget):
     # These are placeholder defaults, actual colors set in _update_theme_colors()
     COLORS = {
         STATE_WORK: QColor("transparent"),
-        STATE_VACATION: QColor("#2e7d32"),     # Dark green (works on both themes)
-        STATE_SICKNESS: QColor("#c62828"),     # Dark red (works on both themes)
-        STATE_HOLIDAY: QColor("#1565c0")       # Dark blue (works on both themes)
+        STATE_VACATION: QColor("#4CAF50"),     # Match Generate Report button
+        STATE_SICKNESS: QColor("#c62828"),     # Dark red
+        STATE_HOLIDAY: QColor("#1976d2")       # Match Add Manual Entry button
     }
 
     dateContextRequested = Signal(QDate)  # Right-click signal
@@ -207,20 +207,20 @@ class StatusCalendarWidget(QCalendarWidget):
         is_dark = bg_color.lightness() < 128
 
         if is_dark:
-            # Dark mode colors - use softer, muted versions
+            # Dark mode colors - slightly muted versions of button colors
             self.COLORS = {
                 self.STATE_WORK: QColor("transparent"),
-                self.STATE_VACATION: QColor("#1b5e20"),     # Dark forest green
-                self.STATE_SICKNESS: QColor("#b71c1c"),     # Dark red
-                self.STATE_HOLIDAY: QColor("#0d47a1")       # Dark blue
+                self.STATE_VACATION: QColor("#388E3C"),     # Darker green (based on #4CAF50)
+                self.STATE_SICKNESS: QColor("#c62828"),     # Dark red
+                self.STATE_HOLIDAY: QColor("#1565c0")       # Darker blue (based on #1976d2)
             }
         else:
-            # Light mode colors - use brighter versions
+            # Light mode colors - match button colors with transparency
             self.COLORS = {
                 self.STATE_WORK: QColor("transparent"),
-                self.STATE_VACATION: QColor("#a5d6a7"),     # Light green
+                self.STATE_VACATION: QColor("#81C784"),     # Light green (based on #4CAF50)
                 self.STATE_SICKNESS: QColor("#ef9a9a"),     # Light red/pink
-                self.STATE_HOLIDAY: QColor("#90caf9")       # Light blue
+                self.STATE_HOLIDAY: QColor("#64B5F6")       # Light blue (based on #1976d2)
             }
 
     def changeEvent(self, event):
@@ -595,14 +595,14 @@ class HistoryWindow(QWidget):
                 "padding: 4px 8px; border-radius: 4px; margin-right: 5px;"
             )
             holiday_style = (
-                "background-color: #0d47a1; color: white; "
+                "background-color: #1565c0; color: white; "
                 "padding: 4px 8px; border-radius: 4px; margin-right: 5px;"
             )
             hint_style = "color: #999; font-style: italic; font-size: 11px;"
         else:
-            # Light mode - use brighter colors
+            # Light mode - match button colors
             vacation_style = (
-                "background-color: #a5d6a7; color: #1b5e20; "
+                "background-color: #81C784; color: #1b5e20; "
                 "padding: 4px 8px; border-radius: 4px; margin-right: 5px;"
             )
             sickness_style = (
@@ -610,7 +610,7 @@ class HistoryWindow(QWidget):
                 "padding: 4px 8px; border-radius: 4px; margin-right: 5px;"
             )
             holiday_style = (
-                "background-color: #90caf9; color: #0d47a1; "
+                "background-color: #64B5F6; color: #0d47a1; "
                 "padding: 4px 8px; border-radius: 4px; margin-right: 5px;"
             )
             hint_style = "color: #666; font-style: italic; font-size: 11px;"

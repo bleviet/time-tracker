@@ -111,6 +111,7 @@ class UserPreferences(BaseModel):
     minimize_to_tray: bool = True
     start_with_windows: bool = False
     theme: str = Field(default="auto", description="Theme: 'light', 'dark', or 'auto' (follows system)")
+    font_scale: float = Field(default=1.0, ge=0.5, le=2.0, description="Font scale factor (0.5 to 2.0)")
 
     # Work Regulations
     work_hours_per_day: float = Field(default=8.0, description="Target daily working hours")
