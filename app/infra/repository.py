@@ -284,7 +284,9 @@ class TimeEntryRepository:
             result = await session.execute(
                 select(TimeEntryModel).where(TimeEntryModel.id == entry.id)
             )
-            entry_model = result.scalar_one()
+            entry_model = result.scalar_one_or_none()
+            if entry_model is None:
+                return entry
             return TimeEntry.model_validate(entry_model)
 
     async def get_by_task(self, task_id: int, start_date: Optional[datetime] = None,
