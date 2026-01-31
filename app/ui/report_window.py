@@ -8,7 +8,6 @@ Features:
 - Configuration persistence.
 """
 
-import sys
 import datetime
 import calendar
 import asyncio
@@ -22,7 +21,6 @@ from PySide6.QtWidgets import (
     QGridLayout, QCheckBox, QMessageBox, QGroupBox
 )
 from PySide6.QtCore import Qt, QDate, Signal
-from PySide6.QtGui import QColor, QPalette
 
 from app.domain.models import Task
 from app.infra.repository import TaskRepository
@@ -42,127 +40,8 @@ class ReportWindow(QDialog):
         self.resize(600, 500)
         self.setModal(True)
 
-        # Apply Main Window-like styling (Light, Modern)
-        self.setStyleSheet("""
-            /* Global Reset for this Window */
-            QWidget {
-                background-color: #ffffff;
-                color: #2c3e50;
-            }
-
-            /* Group Boxes */
-            QGroupBox {
-                border: 1px solid #e0e0e0;
-                border-radius: 8px;
-                margin-top: 24px;
-                padding-top: 10px;
-                font-weight: bold;
-                color: #333;
-                background-color: #ffffff;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                subcontrol-position: top left;
-                padding: 0 5px;
-                left: 10px;
-                background-color: #ffffff;
-            }
-
-            /* Inputs & Combos */
-            QComboBox {
-                border: 1px solid #ccc;
-                border-radius: 4px;
-                padding: 4px;
-                min-width: 80px;
-                color: #333;
-                background-color: #fff;
-            }
-            QComboBox::drop-down {
-                border: 0px;
-            }
-            QComboBox QAbstractItemView {
-                background-color: #fff;
-                color: #333;
-                selection-background-color: #e0e0e0;
-                selection-color: #000;
-            }
-
-            /* Tabs */
-            QTabWidget::pane {
-                border: 1px solid #e0e0e0;
-                border-radius: 4px;
-                background: #fff;
-            }
-            QTabBar::tab {
-                background: #f5f5f5;
-                border: 1px solid #e0e0e0;
-                padding: 8px 16px;
-                margin-right: 2px;
-                border-top-left-radius: 4px;
-                border-top-right-radius: 4px;
-                color: #555;
-            }
-            QTabBar::tab:selected {
-                background: #fff;
-                border-bottom-color: #fff;
-                font-weight: bold;
-                color: #1976d2;
-            }
-
-            /* Scroll Areas */
-            QScrollArea, QScrollArea > QWidget > QWidget {
-                background-color: #ffffff;
-                border: none;
-            }
-
-            /* Labels */
-            QLabel {
-                color: #2c3e50;
-                background-color: transparent;
-            }
-
-            /* Checkboxes */
-            QCheckBox {
-                color: #2c3e50;
-                background-color: transparent;
-                spacing: 5px;
-            }
-            QCheckBox::indicator {
-                width: 18px;
-                height: 18px;
-                border: 1px solid #ccc;
-                border-radius: 4px;
-                background-color: #f5f5f5;
-            }
-            QCheckBox::indicator:checked {
-                background-color: #1976d2;
-                border-color: #1976d2;
-                 /* Simple checkmark approximation or use an image if resources allowed.
-                    For pure CSS without images, we can use a border/background trick or just solid color.
-                    Solid blue for checked is standard "flat" UI.
-                 */
-                 image: url(none); /* remove any default */
-            }
-            QCheckBox::indicator:hover {
-                border-color: #1976d2;
-            }
-        """)
-
-        # Force Light Palette (helps with title bars on some Qt versions/platforms)
-        light_palette = QPalette()
-        light_palette.setColor(QPalette.Window, QColor(255, 255, 255))
-        light_palette.setColor(QPalette.WindowText, QColor(0, 0, 0))
-        light_palette.setColor(QPalette.Base, QColor(255, 255, 255))
-        light_palette.setColor(QPalette.AlternateBase, QColor(245, 245, 245))
-        light_palette.setColor(QPalette.ToolTipBase, QColor(255, 255, 255))
-        light_palette.setColor(QPalette.ToolTipText, QColor(0, 0, 0))
-        light_palette.setColor(QPalette.Text, QColor(0, 0, 0))
-        light_palette.setColor(QPalette.Button, QColor(245, 245, 245))
-        light_palette.setColor(QPalette.ButtonText, QColor(0, 0, 0))
-        light_palette.setColor(QPalette.BrightText, QColor(255, 0, 0))
-        light_palette.setColor(QPalette.Highlight, QColor(25, 118, 210)) # #1976d2
-        light_palette.setColor(QPalette.HighlightedText, QColor(255, 255, 255))
-        self.setPalette(light_palette)
+        # Note: Global theme is managed by qdarktheme via SystemTrayApp
+        # Only add minimal custom styling for specific elements that need it
 
         self.loop = asyncio.get_event_loop()
         self.settings = get_settings()
@@ -234,20 +113,18 @@ class ReportWindow(QDialog):
         self.generate_btn = QPushButton(tr("report.generate"))
         self.generate_btn.setStyleSheet("""
             QPushButton {
-                background-color: #f5f5f5;
-                color: #333;
+                background-color: #4CAF50;
+                color: white;
                 font-weight: bold;
                 padding: 8px 16px;
-                border: 1px solid #ccc;
+                border: none;
                 border-radius: 6px;
             }
             QPushButton:hover {
-                background-color: #e0e0e0;
-                color: #000;
-                border-color: #bbb;
+                background-color: #45a049;
             }
             QPushButton:pressed {
-                background-color: #d5d5d5;
+                background-color: #3d8b40;
             }
         """)
         self.generate_btn.clicked.connect(self._generate_report)
@@ -274,7 +151,7 @@ class ReportWindow(QDialog):
         file_layout = QHBoxLayout()
 
         self.path_input = QLabel(tr("report.no_file"))
-        self.path_input.setStyleSheet("color: #666; font-style: italic;")
+        self.path_input.setStyleSheet("font-style: italic;")
 
         btn_browse = QPushButton(tr("report.browse"))
         btn_browse.clicked.connect(self._browse_file)
@@ -303,7 +180,7 @@ class ReportWindow(QDialog):
         )
         if filename:
             self.path_input.setText(filename)
-            self.path_input.setStyleSheet("color: black;")
+            self.path_input.setStyleSheet("")
 
     def _on_period_changed(self):
         """Handle month/year change"""
@@ -357,7 +234,7 @@ class ReportWindow(QDialog):
         # Heuristic: if it looks like a default filename or is empty
         if "report_" in current_text or "No file" in current_text or tr("report.no_file") in current_text:
             self.path_input.setText(f"report_{self.selected_date.strftime('%m_%Y')}.{ext}")
-            self.path_input.setStyleSheet("color: black;") # Ensure visible
+            self.path_input.setStyleSheet("")  # Reset to default palette color
 
     async def _load_data(self):
         """Load tasks and configs asynchronously"""
