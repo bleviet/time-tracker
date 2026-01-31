@@ -18,7 +18,7 @@ def main():
     
     add_data = [
         ("app/assets", "app/assets"),
-        ("templates", "templates"),
+        ("app/resources/templates", "app/resources/templates"),
     ]
     
     # Construct PyInstaller arguments
