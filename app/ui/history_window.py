@@ -364,39 +364,18 @@ class HistoryWindow(QWidget):
         regulations_layout.addLayout(target_layout)
 
         # Compliance Checks
-        checkbox_style = """
-            QCheckBox {
-                spacing: 8px;
-                padding: 4px;
-            }
-            QCheckBox::indicator {
-                width: 18px;
-                height: 18px;
-                border: 2px solid #999;
-                border-radius: 3px;
-                background: white;
-            }
-            QCheckBox::indicator:checked {
-                background: #1976d2;
-                border-color: #1976d2;
-            }
-        """
-
         self.check_enable_compliance = QCheckBox(tr("regulations.enable_compliance"))
         self.check_enable_compliance.setToolTip("Warns when daily hours exceed 10 hours")
-        self.check_enable_compliance.setStyleSheet(checkbox_style)
         self.check_enable_compliance.stateChanged.connect(self._save_regulations)
         regulations_layout.addWidget(self.check_enable_compliance)
 
         self.check_breaks = QCheckBox(tr("regulations.check_breaks"))
         self.check_breaks.setToolTip("Warn if >6h without 30m break")
-        self.check_breaks.setStyleSheet(checkbox_style)
         self.check_breaks.stateChanged.connect(self._save_regulations)
         regulations_layout.addWidget(self.check_breaks)
 
         self.check_rest = QCheckBox(tr("regulations.check_rest"))
         self.check_rest.setToolTip("Warn if <11h between work days")
-        self.check_rest.setStyleSheet(checkbox_style)
         self.check_rest.stateChanged.connect(self._save_regulations)
         regulations_layout.addWidget(self.check_rest)
 
