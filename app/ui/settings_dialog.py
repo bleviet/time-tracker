@@ -119,6 +119,31 @@ class SettingsDialog(QDialog):
         separator_label2 = QLabel("")
         layout.addRow(separator_label2)
 
+        # Regional section
+        regional_label = QLabel("Regional")
+        regional_label.setStyleSheet("font-weight: bold;")
+        layout.addRow(regional_label)
+
+        # German state selection
+        self.combo_german_state = QComboBox()
+        self._populate_german_states()
+        self.combo_german_state.setToolTip(
+            "Select your German state for accurate public holiday detection"
+        )
+        layout.addRow("German State:", self.combo_german_state)
+
+        self.check_respect_holidays = QCheckBox("Respect public holidays")
+        self.check_respect_holidays.setToolTip("Disable tracking on public holidays")
+        layout.addRow(self.check_respect_holidays)
+
+        self.check_respect_weekends = QCheckBox("Respect weekends")
+        self.check_respect_weekends.setToolTip("Disable tracking on weekends")
+        layout.addRow(self.check_respect_weekends)
+
+        # Add separator
+        separator_label3 = QLabel("")
+        layout.addRow(separator_label3)
+
         # Tray section
         tray_label = QLabel("System Tray")
         tray_label.setStyleSheet("font-weight: bold;")
@@ -129,6 +154,30 @@ class SettingsDialog(QDialog):
 
         layout.addRow(self.check_show_seconds)
         layout.addRow(self.check_minimize_tray)
+
+    def _populate_german_states(self):
+        """Populate the German state dropdown with all 16 states."""
+        # German states with their two-letter codes
+        german_states = [
+            ("BW", "Baden-Württemberg"),
+            ("BY", "Bavaria (Bayern)"),
+            ("BE", "Berlin"),
+            ("BB", "Brandenburg"),
+            ("HB", "Bremen"),
+            ("HH", "Hamburg"),
+            ("HE", "Hesse (Hessen)"),
+            ("MV", "Mecklenburg-Vorpommern"),
+            ("NI", "Lower Saxony (Niedersachsen)"),
+            ("NW", "North Rhine-Westphalia (Nordrhein-Westfalen)"),
+            ("RP", "Rhineland-Palatinate (Rheinland-Pfalz)"),
+            ("SL", "Saarland"),
+            ("SN", "Saxony (Sachsen)"),
+            ("ST", "Saxony-Anhalt (Sachsen-Anhalt)"),
+            ("SH", "Schleswig-Holstein"),
+            ("TH", "Thuringia (Thüringen)"),
+        ]
+        for code, name in german_states:
+            self.combo_german_state.addItem(f"{name} ({code})", code)
 
     def _setup_backup_tab(self):
         """Setup the backup settings tab"""
@@ -387,6 +436,13 @@ class SettingsDialog(QDialog):
             self.spin_font_scale.setValue(self.prefs.font_scale)
             self.font_scale_label.setText(f"{int(self.prefs.font_scale * 100)}%")
 
+            # Regional settings
+            state_index = self.combo_german_state.findData(self.prefs.german_state)
+            if state_index >= 0:
+                self.combo_german_state.setCurrentIndex(state_index)
+            self.check_respect_holidays.setChecked(self.prefs.respect_holidays)
+            self.check_respect_weekends.setChecked(self.prefs.respect_weekends)
+
             # Backup
             self.check_backup_enabled.setChecked(self.prefs.backup_enabled)
             # Set frequency combo index
@@ -427,6 +483,11 @@ class SettingsDialog(QDialog):
             self.prefs.show_seconds_in_tray = self.check_show_seconds.isChecked()
             self.prefs.minimize_to_tray = self.check_minimize_tray.isChecked()
             self.prefs.font_scale = self.spin_font_scale.value()
+
+            # Regional settings
+            self.prefs.german_state = self.combo_german_state.currentData()
+            self.prefs.respect_holidays = self.check_respect_holidays.isChecked()
+            self.prefs.respect_weekends = self.check_respect_weekends.isChecked()
 
             # Backup settings
             self.prefs.backup_enabled = self.check_backup_enabled.isChecked()
