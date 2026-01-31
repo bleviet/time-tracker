@@ -181,6 +181,45 @@ You can manage your tasks via the **Manage Tasks** dialog (accessible from the H
    - **Exclusions**: Uncheck tasks (like "Lunch" or "Break") to exclude them from the "Total Work" calculation.
 3. Click **Generate Report**. Your settings for Time Off and Exclusions are **automatically saved** for next time.
 
+## Autostart
+
+Set up your OS to launch the app at login.
+
+### Windows (Startup Folder)
+
+1. Press **Win + R**, type `shell:startup`, and press Enter.
+2. Create a shortcut to the app:
+  - **Development:** shortcut target: `uv run main.py` (set **Start in** to the project folder)
+  - **Packaged:** shortcut target: the built executable path (e.g., `TimeTracker.exe`)
+
+### Linux (Desktop Autostart)
+
+Create a `~/.config/autostart/TimeTracker.desktop` file:
+
+```
+[Desktop Entry]
+Type=Application
+Name=TimeTracker
+Exec=uv run /absolute/path/to/time-tracker/main.py
+Terminal=false
+X-GNOME-Autostart-enabled=true
+```
+
+For a packaged build, set `Exec` to the binary path instead.
+
+### macOS (Login Items)
+
+1. Open **System Settings** → **General** → **Login Items**.
+2. Click **+** and add the built app or the executable.
+
+For development, create a small wrapper script and add it:
+
+```
+#!/bin/sh
+cd /absolute/path/to/time-tracker
+exec uv run main.py
+```
+
 ### Internationalization
 
 The application supports **English** and **German**.
