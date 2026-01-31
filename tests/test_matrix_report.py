@@ -7,7 +7,9 @@ import datetime
 from pathlib import Path
 from app.domain.models import Task, TimeEntry
 from app.infra.repository import TaskRepository, TimeEntryRepository
-from app.services.matrix_report_service import MatrixReportService, ReportConfiguration, TimeOffConfig
+from app.services.accounting_matrix_service import AccountingMatrixService
+from app.services.matrix_report_service import ReportConfiguration, TimeOffConfig
+
 
 @pytest.mark.asyncio
 async def test_matrix_report_generation(db_session, monkeypatch):
@@ -18,22 +20,15 @@ async def test_matrix_report_generation(db_session, monkeypatch):
     3. Run report generation.
     4. Verify CSV content.
     """
-    
+
     # Mock the session in repositories to use our test session
     # (Since repositories instantiate their own session by default, use dependency injection or mock)
     # Our Repository allows session injection!
     task_repo = TaskRepository(session=db_session)
     entry_repo = TimeEntryRepository(session=db_session)
-    
+
     # We need to monkeypatch the service to use our repos with injected session
-    # Or better, refactor Service to accept them, but for now let's patch the init of the service
-    # Actually, the service creates new instances in the method if not injected.
-    # The current MatrixReportService __init__ creates `self.task_repo = TaskRepository()`.
-    # Let's verify source code of MatrixReportService... 
-    # It does `self.task_repo = TaskRepository()`.
-    # We need to hot-swap these attributes on the instance.
-    
-    service = MatrixReportService()
+    service = AccountingMatrixService()
     service.task_repo = task_repo
     service.entry_repo = entry_repo
 

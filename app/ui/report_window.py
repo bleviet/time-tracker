@@ -26,10 +26,7 @@ from PySide6.QtGui import QColor, QPalette
 
 from app.domain.models import Task
 from app.infra.repository import TaskRepository
-from app.services.matrix_report_service import (
-    MatrixReportService, ReportConfiguration
-)
-from app.services.report_service import ReportService
+from app.services.matrix_report_service import ReportConfiguration
 from app.infra.config import get_settings
 
 

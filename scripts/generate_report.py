@@ -10,7 +10,8 @@ from pathlib import Path
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from app.services.matrix_report_service import MatrixReportService, ReportConfiguration
+from app.services.accounting_matrix_service import AccountingMatrixService
+from app.services.matrix_report_service import ReportConfiguration
 
 
 async def main():
@@ -34,22 +35,22 @@ async def main():
         sys.exit(1)
 
     print(f"Generating report for period: {config.period}")
-    service = MatrixReportService()
-    
+    service = AccountingMatrixService()
+
     csv_content = await service.generate_report(config)
-    
+
     # Determine output path
     if config.output_path:
         output_file = Path(config.output_path)
     else:
         output_file = config_path.parent / f"report_{config.period}.csv"
-        
+
     # Ensure directory exists
     output_file.parent.mkdir(parents=True, exist_ok=True)
-    
+
     with open(output_file, 'w', encoding='utf-8') as f:
         f.write(csv_content)
-        
+
     print(f"Report successfully saved to: {output_file.absolute()}")
 
 
