@@ -62,14 +62,18 @@ class AccountingManagementDialog(QDialog):
         del_btn = QPushButton(tr("acc_mgmt.btn_del_profile"))
         del_btn.clicked.connect(self._delete_profile)
         
-        # New "Add Property" button
+        # Property buttons
         add_prop_btn = QPushButton(tr("acc_mgmt.btn_add_property"))
         add_prop_btn.clicked.connect(self._add_property)
+
+        remove_prop_btn = QPushButton(tr("acc_mgmt.btn_remove_property"))
+        remove_prop_btn.clicked.connect(self._remove_property)
         
         btn_layout.addWidget(add_btn)
         btn_layout.addWidget(del_btn)
         btn_layout.addStretch()
         btn_layout.addWidget(add_prop_btn)
+        btn_layout.addWidget(remove_prop_btn)
         
         layout.addLayout(btn_layout)
         
@@ -222,6 +226,23 @@ class AccountingManagementDialog(QDialog):
                 
             except Exception as e:
                 QMessageBox.critical(self, tr("error"), tr("acc_settings.save_error").format(error=e))
+
+    def _remove_property(self):
+        """Remove an accounting property (column)"""
+        if not self.columns:
+            QMessageBox.information(self, tr("acc_mgmt.remove_property_title"), tr("acc_mgmt.no_properties"))
+            return
+
+        col_name, ok = QInputDialog.getItem(
+            self,
+            tr("acc_mgmt.remove_property_title"),
+            tr("acc_mgmt.remove_property_msg"),
+            self.columns,
+            0,
+            False,
+        )
+        if ok and col_name:
+            self._delete_property(col_name)
                 
     def _delete_property(self, col_name: str):
         """Delete an accounting property (column)"""
