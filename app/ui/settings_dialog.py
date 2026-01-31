@@ -21,6 +21,8 @@ class SettingsDialog(QDialog):
 
     # Emitted when data is restored from backup, so other windows can refresh
     data_restored = Signal()
+    # Emitted when theme changes, so the app can apply the new theme
+    theme_changed = Signal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -31,6 +33,7 @@ class SettingsDialog(QDialog):
         self.repo = UserRepository()
         self.backup_service = BackupService()
         self.prefs = UserPreferences() # Default
+        self._loading = False  # Flag to prevent theme changes during load
 
         self._setup_ui()
         self._load_data()
@@ -61,6 +64,29 @@ class SettingsDialog(QDialog):
     def _setup_general_tab(self):
         layout = QFormLayout(self.general_tab)
 
+        # Appearance section
+        appearance_label = QLabel("Appearance")
+        appearance_label.setStyleSheet("font-weight: bold; margin-top: 10px;")
+        layout.addRow(appearance_label)
+
+        # Theme selection
+        self.combo_theme = QComboBox()
+        self.combo_theme.addItem("Follow System", "auto")
+        self.combo_theme.addItem("Light", "light")
+        self.combo_theme.addItem("Dark", "dark")
+        self.combo_theme.setToolTip("Select application color theme")
+        self.combo_theme.currentIndexChanged.connect(self._on_theme_preview)
+        layout.addRow("Theme:", self.combo_theme)
+
+        # Add separator
+        separator_label = QLabel("")
+        layout.addRow(separator_label)
+
+        # Behavior section
+        behavior_label = QLabel("Behavior")
+        behavior_label.setStyleSheet("font-weight: bold;")
+        layout.addRow(behavior_label)
+
         self.check_auto_pause = QCheckBox("Auto-pause when screen locks")
         self.check_ask_unlock = QCheckBox("Ask about time away on unlock")
 
@@ -72,9 +98,17 @@ class SettingsDialog(QDialog):
         layout.addRow(self.check_ask_unlock)
         layout.addRow("Auto-pause threshold:", self.spin_threshold)
 
-        # Tray settings
+        # Add separator
+        separator_label2 = QLabel("")
+        layout.addRow(separator_label2)
+
+        # Tray section
+        tray_label = QLabel("System Tray")
+        tray_label.setStyleSheet("font-weight: bold;")
+        layout.addRow(tray_label)
+
         self.check_show_seconds = QCheckBox("Show seconds in tray icon")
-        self.check_minimize_tray = QCheckBox("Minimize to try instead of closing")
+        self.check_minimize_tray = QCheckBox("Minimize to tray instead of closing")
 
         layout.addRow(self.check_show_seconds)
         layout.addRow(self.check_minimize_tray)
@@ -291,11 +325,22 @@ class SettingsDialog(QDialog):
         else:
             self.label_last_backup.setText("Last backup: Never")
 
-
+    def _on_theme_preview(self, index: int):
+        """Preview theme change immediately when selection changes"""
+        if self._loading:
+            return  # Don't trigger theme change during initial load
+        theme = self.combo_theme.currentData()
+        self.theme_changed.emit(theme)
 
     def _load_data(self):
         try:
+            self._loading = True  # Prevent theme changes during load
             self.prefs = self.loop.run_until_complete(self.repo.get_preferences())
+
+            # Theme (loading flag prevents triggering preview during load)
+            theme_index = self.combo_theme.findData(self.prefs.theme)
+            if theme_index >= 0:
+                self.combo_theme.setCurrentIndex(theme_index)
 
             # General
             self.check_auto_pause.setChecked(self.prefs.auto_pause_on_lock)
@@ -318,13 +363,19 @@ class SettingsDialog(QDialog):
             self._update_last_backup_label()
             self._refresh_backup_list()
 
+            self._loading = False  # Loading complete, allow theme changes
+
         except Exception as e:
+            self._loading = False
             QMessageBox.critical(self, "Error", f"Failed to load settings: {e}")
 
 
 
     def _save(self):
         try:
+            # Theme
+            self.prefs.theme = self.combo_theme.currentData()
+
             # Update Prefs Object
             self.prefs.auto_pause_on_lock = self.check_auto_pause.isChecked()
             self.prefs.ask_on_unlock = self.check_ask_unlock.isChecked()

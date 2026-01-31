@@ -110,6 +110,7 @@ class UserPreferences(BaseModel):
     show_seconds_in_tray: bool = True
     minimize_to_tray: bool = True
     start_with_windows: bool = False
+    theme: str = Field(default="auto", description="Theme: 'light', 'dark', or 'auto' (follows system)")
 
     # Work Regulations
     work_hours_per_day: float = Field(default=8.0, description="Target daily working hours")

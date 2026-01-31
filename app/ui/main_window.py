@@ -11,8 +11,8 @@ from PySide6.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout, QLineEdit,
     QLabel, QCompleter, QMessageBox, QApplication, QPushButton
 )
-from PySide6.QtCore import Qt, Signal, QStringListModel
-from PySide6.QtGui import QFont, QScreen, QShortcut, QKeySequence
+from PySide6.QtCore import Qt, Signal, QStringListModel, QEvent
+from PySide6.QtGui import QFont, QScreen, QShortcut, QKeySequence, QPalette
 
 from app.domain.models import Task
 from app.services import TimerService
@@ -39,6 +39,7 @@ class MainWindow(QMainWindow):
         self.timer_service = timer_service
         self.tasks = tasks
         self.loop = asyncio.get_event_loop()
+        self._current_theme: str = "auto"  # Track explicit theme setting
 
         # Window settings for minimal always-on-top widget
         self.setWindowTitle("Time Tracker")
@@ -59,27 +60,58 @@ class MainWindow(QMainWindow):
         QApplication.processEvents()  # Ensure size is calculated
         self._position_bottom_right()
 
+    def _is_dark_mode(self) -> bool:
+        """Detect if the application is using dark mode based on current theme setting"""
+        if self._current_theme == "dark":
+            return True
+        elif self._current_theme == "light":
+            return False
+        else:
+            # Auto mode: detect from palette
+            palette = QApplication.palette()
+            window_color = palette.color(QPalette.ColorRole.Window)
+            # If window background is darker than mid-gray, we're in dark mode
+            return window_color.lightness() < 128
+
+    def _get_theme_colors(self) -> dict:
+        """Get theme-appropriate colors for the floating widget"""
+        if self._is_dark_mode():
+            return {
+                'bg': 'rgba(45, 45, 45, 240)',
+                'border': 'rgba(255, 255, 255, 0.1)',
+                'text': '#e0e0e0',
+                'text_focus': '#90caf9',
+                'separator': 'rgba(255, 255, 255, 0.2)',
+                'timer': '#90caf9',
+                'icon': 'rgba(255, 255, 255, 0.6)',
+                'icon_hover': 'rgba(255, 255, 255, 0.8)',
+                'hover_bg': 'rgba(255, 255, 255, 0.1)',
+                'tooltip_bg': '#424242',
+                'tooltip_border': '#666666',
+            }
+        else:
+            return {
+                'bg': 'rgba(255, 255, 255, 240)',
+                'border': 'rgba(0, 0, 0, 0.1)',
+                'text': '#2c3e50',
+                'text_focus': '#1976d2',
+                'separator': 'rgba(0, 0, 0, 0.2)',
+                'timer': '#1976d2',
+                'icon': 'rgba(0, 0, 0, 0.6)',
+                'icon_hover': 'rgba(0, 0, 0, 0.8)',
+                'hover_bg': 'rgba(0, 0, 0, 0.1)',
+                'tooltip_bg': '#333333',
+                'tooltip_border': '#555555',
+            }
+
     def _setup_ui(self):
         """Setup the minimal UI - just task input and timer"""
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
+        self.central_widget = central_widget  # Store reference for theme updates
 
-        # Add modern rounded border styling to entire widget
-        central_widget.setStyleSheet("""
-            QWidget {
-                background-color: rgba(255, 255, 255, 240);
-                border-radius: 15px;
-                border: 1px solid rgba(0, 0, 0, 0.1);
-            }
-            QToolTip {
-                background-color: #333333;
-                color: white;
-                border: 1px solid #555555;
-                border-radius: 4px;
-                padding: 4px 8px;
-                font-size: 11px;
-            }
-        """)
+        # Apply theme-aware styling
+        self._apply_widget_theme()
 
         # Horizontal layout for task name and timer side by side
         layout = QHBoxLayout(central_widget)
@@ -96,17 +128,6 @@ class MainWindow(QMainWindow):
         task_font.setPointSize(11)
         self.task_input.setFont(task_font)
         self.task_input.setMinimumHeight(30)
-        self.task_input.setStyleSheet("""
-            QLineEdit {
-                background-color: transparent;
-                border: none;
-                padding: 5px;
-                color: #2c3e50;
-            }
-            QLineEdit:focus {
-                color: #1976d2;
-            }
-        """)
 
         # Setup autocomplete
         self.completer = QCompleter()
@@ -121,27 +142,13 @@ class MainWindow(QMainWindow):
         self.toggle_btn.setFixedSize(30, 30)
         self.toggle_btn.clicked.connect(self._toggle_tracking)
         self.toggle_btn.setCursor(Qt.PointingHandCursor)
-        self.toggle_btn.setStyleSheet("""
-            QPushButton {
-                background-color: transparent;
-                border: none;
-                color: #4CAF50;  /* Green for Play */
-                font-size: 18px;
-                font-weight: bold;
-                border-radius: 15px;
-            }
-            QPushButton:hover {
-                background-color: rgba(76, 175, 80, 0.1);
-            }
-        """)
         self.toggle_btn.setToolTip("Start Tracking")
         layout.addWidget(self.toggle_btn)
 
         # Separator line
-        separator = QLabel("|")
-        separator.setStyleSheet("color: rgba(0, 0, 0, 0.2); font-size: 14px;")
-        separator.setAlignment(Qt.AlignCenter)
-        layout.addWidget(separator)
+        self.separator = QLabel("|")
+        self.separator.setAlignment(Qt.AlignCenter)
+        layout.addWidget(self.separator)
 
         # Timer display
         self.timer_display = QLabel("00:00:00")
@@ -151,13 +158,6 @@ class MainWindow(QMainWindow):
         timer_font.setBold(True)
         self.timer_display.setFont(timer_font)
         self.timer_display.setMinimumHeight(30)
-        self.timer_display.setStyleSheet("""
-            QLabel {
-                background-color: transparent;
-                color: #1976d2;
-                padding: 5px;
-            }
-        """)
 
         layout.addWidget(self.timer_display, stretch=2)
 
@@ -166,17 +166,6 @@ class MainWindow(QMainWindow):
         self.report_btn.setFixedSize(30, 30)
         self.report_btn.clicked.connect(self.show_history.emit)
         self.report_btn.setCursor(Qt.PointingHandCursor)
-        self.report_btn.setStyleSheet("""
-            QPushButton {
-                background-color: transparent;
-                border: none;
-                font-size: 16px;
-                border-radius: 15px;
-            }
-            QPushButton:hover {
-                background-color: rgba(25, 118, 210, 0.1);
-            }
-        """)
         self.report_btn.setToolTip("Monthly Overview")
         layout.addWidget(self.report_btn)
 
@@ -185,19 +174,6 @@ class MainWindow(QMainWindow):
         self.settings_btn.setFixedSize(30, 30)
         self.settings_btn.clicked.connect(self._open_settings)
         self.settings_btn.setCursor(Qt.PointingHandCursor)
-        self.settings_btn.setStyleSheet("""
-            QPushButton {
-                background-color: transparent;
-                border: none;
-                color: rgba(0, 0, 0, 0.6);
-                font-size: 18px;
-                border-radius: 15px;
-            }
-            QPushButton:hover {
-                background-color: rgba(0, 0, 0, 0.1);
-                color: rgba(0, 0, 0, 0.8);
-            }
-        """)
         self.settings_btn.setToolTip("Settings")
         layout.addWidget(self.settings_btn)
 
@@ -205,26 +181,175 @@ class MainWindow(QMainWindow):
         self.minimize_button = QPushButton("▼")
         self.minimize_button.setFixedSize(30, 30)
         self.minimize_button.clicked.connect(self.hide)
-        self.minimize_button.setStyleSheet("""
-            QPushButton {
-                background-color: transparent;
-                border: none;
-                color: rgba(0, 0, 0, 0.5);
-                font-size: 20px;
-                font-weight: bold;
-                border-radius: 15px;
-            }
-            QPushButton:hover {
-                background-color: rgba(0, 0, 0, 0.1);
-                color: rgba(0, 0, 0, 0.8);
-            }
-        """)
         self.minimize_button.setToolTip("Hide to tray (Esc)")
         layout.addWidget(self.minimize_button)
 
         # Make window compact with rounded appearance
         self.setFixedHeight(50)
         self.setMinimumWidth(450)
+
+        # Apply element-specific styles
+        self._apply_element_styles()
+
+    def _apply_widget_theme(self):
+        """Apply theme to the central widget"""
+        colors = self._get_theme_colors()
+        self.central_widget.setStyleSheet(f"""
+            QWidget {{
+                background-color: {colors['bg']};
+                border-radius: 15px;
+                border: 1px solid {colors['border']};
+            }}
+            QToolTip {{
+                background-color: {colors['tooltip_bg']};
+                color: white;
+                border: 1px solid {colors['tooltip_border']};
+                border-radius: 4px;
+                padding: 4px 8px;
+                font-size: 11px;
+            }}
+        """)
+
+    def _apply_element_styles(self):
+        """Apply theme-aware styles to individual elements"""
+        colors = self._get_theme_colors()
+
+        # Task input
+        self.task_input.setStyleSheet(f"""
+            QLineEdit {{
+                background-color: transparent;
+                border: none;
+                padding: 5px;
+                color: {colors['text']};
+            }}
+            QLineEdit:focus {{
+                color: {colors['text_focus']};
+            }}
+        """)
+
+        # Play button (green for play)
+        self.toggle_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: transparent;
+                border: none;
+                color: #4CAF50;
+                font-size: 18px;
+                font-weight: bold;
+                border-radius: 15px;
+            }}
+            QPushButton:hover {{
+                background-color: rgba(76, 175, 80, 0.1);
+            }}
+        """)
+
+        # Separator
+        self.separator.setStyleSheet(f"color: {colors['separator']}; font-size: 14px;")
+
+        # Timer display
+        self.timer_display.setStyleSheet(f"""
+            QLabel {{
+                background-color: transparent;
+                color: {colors['timer']};
+                padding: 5px;
+            }}
+        """)
+
+        # Report button
+        self.report_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: transparent;
+                border: none;
+                font-size: 16px;
+                border-radius: 15px;
+            }}
+            QPushButton:hover {{
+                background-color: {colors['hover_bg']};
+            }}
+        """)
+
+        # Settings button
+        self.settings_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: transparent;
+                border: none;
+                color: {colors['icon']};
+                font-size: 18px;
+                border-radius: 15px;
+            }}
+            QPushButton:hover {{
+                background-color: {colors['hover_bg']};
+                color: {colors['icon_hover']};
+            }}
+        """)
+
+        # Minimize button
+        self.minimize_button.setStyleSheet(f"""
+            QPushButton {{
+                background-color: transparent;
+                border: none;
+                color: {colors['icon']};
+                font-size: 20px;
+                font-weight: bold;
+                border-radius: 15px;
+            }}
+            QPushButton:hover {{
+                background-color: {colors['hover_bg']};
+                color: {colors['icon_hover']};
+            }}
+        """)
+
+    def update_theme(self, theme: str = None):
+        """Update the widget theme (call when application theme changes)
+
+        Args:
+            theme: The theme to apply ('auto', 'dark', 'light'). If None, uses current theme.
+        """
+        if theme is not None:
+            self._current_theme = theme
+        self._apply_widget_theme()
+        self._apply_element_styles()
+        # Re-apply toggle button style based on current state
+        if self.timer_service.is_tracking():
+            self._apply_pause_button_style()
+        else:
+            self._apply_play_button_style()
+
+    def _apply_play_button_style(self):
+        """Apply play button style (green)"""
+        colors = self._get_theme_colors()
+        self.toggle_btn.setText("▶")
+        self.toggle_btn.setToolTip("Start Tracking")
+        self.toggle_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: transparent;
+                border: none;
+                color: #4CAF50;
+                font-size: 18px;
+                font-weight: bold;
+                border-radius: 15px;
+            }}
+            QPushButton:hover {{
+                background-color: rgba(76, 175, 80, 0.1);
+            }}
+        """)
+
+    def _apply_pause_button_style(self):
+        """Apply pause button style (orange)"""
+        self.toggle_btn.setText("⏸")
+        self.toggle_btn.setToolTip("Pause Tracking")
+        self.toggle_btn.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                border: none;
+                color: #FF9800;
+                font-size: 18px;
+                font-weight: bold;
+                border-radius: 15px;
+            }
+            QPushButton:hover {
+                background-color: rgba(255, 152, 0, 0.1);
+            }
+        """)
 
     def _setup_shortcuts(self):
         """Setup keyboard shortcuts"""
@@ -329,21 +454,7 @@ class MainWindow(QMainWindow):
         self.task_input.selectAll()  # Select all text for easy overwriting
 
         # Update styling for Pause state
-        self.toggle_btn.setText("⏸")
-        self.toggle_btn.setToolTip("Pause Tracking")
-        self.toggle_btn.setStyleSheet("""
-            QPushButton {
-                background-color: transparent;
-                border: none;
-                color: #FF9800;  /* Orange for Pause */
-                font-size: 18px;
-                font-weight: bold;
-                border-radius: 15px;
-            }
-            QPushButton:hover {
-                background-color: rgba(255, 152, 0, 0.1);
-            }
-        """)
+        self._apply_pause_button_style()
 
     def _on_task_stopped(self, task_id: int, total_seconds: int):
         """Update UI when task stops"""
@@ -352,21 +463,7 @@ class MainWindow(QMainWindow):
         self.timer_display.setText("00:00:00")
 
         # Update styling for Play state
-        self.toggle_btn.setText("▶")
-        self.toggle_btn.setToolTip("Start Tracking")
-        self.toggle_btn.setStyleSheet("""
-            QPushButton {
-                background-color: transparent;
-                border: none;
-                color: #4CAF50;  /* Green for Play */
-                font-size: 18px;
-                font-weight: bold;
-                border-radius: 15px;
-            }
-            QPushButton:hover {
-                background-color: rgba(76, 175, 80, 0.1);
-            }
-        """)
+        self._apply_play_button_style()
 
     def refresh_tasks(self, tasks: List[Task]):
         """Refresh the task list (called when tasks are reloaded)"""
@@ -377,7 +474,22 @@ class MainWindow(QMainWindow):
         """Open the Settings dialog"""
         from app.ui.settings_dialog import SettingsDialog
         dialog = SettingsDialog(self)
+        # Connect theme change signal to update this window and apply theme globally
+        dialog.theme_changed.connect(self._on_theme_changed)
         dialog.exec()
+
+    def _on_theme_changed(self, theme: str):
+        """Handle theme change from settings dialog"""
+        import qdarktheme
+        # Apply the theme globally
+        if theme == "auto":
+            qdarktheme.setup_theme("auto")
+        elif theme == "dark":
+            qdarktheme.setup_theme("dark")
+        else:
+            qdarktheme.setup_theme("light")
+        # Update this window's custom styling with the explicit theme
+        self.update_theme(theme)
 
     def mousePressEvent(self, event):
         """Allow dragging the window"""
@@ -437,3 +549,9 @@ class MainWindow(QMainWindow):
         event.ignore()
         self.hide()
         self.closed.emit()
+
+    def changeEvent(self, event):
+        """Handle theme/palette changes"""
+        if event.type() == QEvent.PaletteChange:
+            self.update_theme()
+        super().changeEvent(event)

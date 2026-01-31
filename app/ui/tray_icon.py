@@ -14,6 +14,7 @@ from typing import Optional
 from PySide6.QtWidgets import QApplication, QSystemTrayIcon, QMenu, QMessageBox
 from PySide6.QtGui import QIcon, QPixmap, QColor, QAction, QKeySequence, QShortcut
 from PySide6.QtCore import QTimer, Qt
+import qdarktheme
 
 from app.services import CalendarService, TimerService, ReportService
 from app.services.backup_service import BackupService
@@ -47,6 +48,18 @@ class SystemTrayApp:
         # Settings
         self.settings = get_settings()
 
+        # Event loop for async operations (needed early for loading preferences)
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+
+        # Load user preferences from repository (same source as settings dialog)
+        from app.infra.repository import UserRepository
+        self.user_repo = UserRepository()
+        self.user_prefs = self.loop.run_until_complete(self.user_repo.get_preferences())
+
+        # Apply theme based on user preference from repository
+        self._apply_theme(self.user_prefs.theme)
+
         # Services
         self.calendar = CalendarService(
             german_state=self.settings.preferences.german_state,
@@ -78,10 +91,6 @@ class SystemTrayApp:
         self.setup_menu()
         self.tray_icon.show()
 
-        # Event loop for async operations
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self.loop)
-
         # Initialize on startup
         QTimer.singleShot(0, self._async_init)
 
@@ -103,6 +112,33 @@ class SystemTrayApp:
         pixmap = QPixmap(16, 16)
         pixmap.fill(QColor("green"))
         return QIcon(pixmap)
+
+    def _apply_theme(self, theme: str):
+        """Apply the specified theme using qdarktheme.
+
+        Args:
+            theme: 'light', 'dark', or 'auto' (follows system)
+        """
+        if theme == "auto":
+            qdarktheme.setup_theme("auto")
+        elif theme == "dark":
+            qdarktheme.setup_theme("dark")
+        else:
+            qdarktheme.setup_theme("light")
+
+    def change_theme(self, theme: str):
+        """Change the application theme at runtime.
+
+        Args:
+            theme: 'light', 'dark', or 'auto' (follows system)
+        """
+        self._apply_theme(theme)
+        # Update all open windows to reflect the new theme
+        if self.main_window:
+            self.main_window.update_theme(theme)
+        if self.history_window:
+            self.history_window.update_theme()
+        # Settings dialog uses standard Qt widgets that auto-update with palette
 
     def _connect_signals(self):
         """Connect service signals to UI handlers"""
@@ -151,6 +187,7 @@ class SystemTrayApp:
 
             # Create and show main window
             self.main_window = MainWindow(self.timer, self.tasks)
+            self.main_window.update_theme(self.user_prefs.theme)  # Apply saved theme
             self.main_window.closed.connect(self._on_main_window_closed)
             self.main_window.show_history.connect(self._show_history_window)
             self.main_window.show()
@@ -230,6 +267,7 @@ class SystemTrayApp:
         if not self.settings_window:
             self.settings_window = SettingsDialog()
             self.settings_window.data_restored.connect(self._on_data_restored)
+            self.settings_window.theme_changed.connect(self.change_theme)
         self.settings_window.show()
         self.settings_window.activateWindow()
 

@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (
     QAbstractItemView, QGroupBox, QCheckBox, QDoubleSpinBox, QSplitter, QToolTip
 )
 from PySide6.QtCore import Qt, QDate, Signal, QRect, QEvent, QLocale
-from PySide6.QtGui import QColor, QPalette, QAction, QPainter, QTextCharFormat, QKeySequence, QShortcut
+from PySide6.QtGui import QColor, QAction, QPainter, QTextCharFormat, QKeySequence, QShortcut
 
 from app.domain.models import Task, TimeEntry
 from app.infra.repository import TaskRepository, TimeEntryRepository, UserRepository
@@ -33,11 +33,13 @@ class StatusCalendarWidget(QCalendarWidget):
     STATE_SICKNESS = "sickness"
     STATE_HOLIDAY = "holiday"
 
+    # Colors will be set dynamically based on theme
+    # These are placeholder defaults, actual colors set in _update_theme_colors()
     COLORS = {
-        STATE_WORK: QColor("#ffffff"),         # White/Default
-        STATE_VACATION: QColor("#90EE90"),     # Light Green
-        STATE_SICKNESS: QColor("#FFB6C1"),     # Light Pink
-        STATE_HOLIDAY: QColor("#ADD8E6")       # Light Blue for official holidays
+        STATE_WORK: QColor("transparent"),
+        STATE_VACATION: QColor("#2e7d32"),     # Dark green (works on both themes)
+        STATE_SICKNESS: QColor("#c62828"),     # Dark red (works on both themes)
+        STATE_HOLIDAY: QColor("#1565c0")       # Dark blue (works on both themes)
     }
 
     dateContextRequested = Signal(QDate)  # Right-click signal
@@ -49,6 +51,9 @@ class StatusCalendarWidget(QCalendarWidget):
         self._formatted_dates = set()
         self.setGridVisible(True)
         self.setVerticalHeaderFormat(QCalendarWidget.NoVerticalHeader)
+
+        # Initialize theme-aware colors
+        self._update_theme_colors()
 
         # Install event filter on the internal table view to catch right-clicks
         # QCalendarWidget uses an internal QTableView to display the calendar
@@ -178,6 +183,37 @@ class StatusCalendarWidget(QCalendarWidget):
         self._violations = violations
         self.updateCells()
 
+    def _update_theme_colors(self):
+        """Update colors based on current theme (dark or light mode)"""
+        # Detect if dark mode is active by checking palette
+        palette = self.palette()
+        bg_color = palette.color(palette.ColorRole.Window)
+        is_dark = bg_color.lightness() < 128
+
+        if is_dark:
+            # Dark mode colors - use softer, muted versions
+            self.COLORS = {
+                self.STATE_WORK: QColor("transparent"),
+                self.STATE_VACATION: QColor("#1b5e20"),     # Dark forest green
+                self.STATE_SICKNESS: QColor("#b71c1c"),     # Dark red
+                self.STATE_HOLIDAY: QColor("#0d47a1")       # Dark blue
+            }
+        else:
+            # Light mode colors - use brighter versions
+            self.COLORS = {
+                self.STATE_WORK: QColor("transparent"),
+                self.STATE_VACATION: QColor("#a5d6a7"),     # Light green
+                self.STATE_SICKNESS: QColor("#ef9a9a"),     # Light red/pink
+                self.STATE_HOLIDAY: QColor("#90caf9")       # Light blue
+            }
+
+    def changeEvent(self, event):
+        """Handle theme changes"""
+        if event.type() == QEvent.PaletteChange:
+            self._update_theme_colors()
+            self.updateCells()
+        super().changeEvent(event)
+
 
 class HistoryWindow(QWidget):
     """
@@ -189,138 +225,8 @@ class HistoryWindow(QWidget):
         self.setWindowTitle("Monthly Overview")
         self.resize(1100, 850)
 
-        # Apply Main Window-like styling (Light, Modern)
-        self.setStyleSheet("""
-            /* Global Reset for this Window */
-            QWidget {
-                background-color: #ffffff;
-                color: #2c3e50;
-            }
-
-            /* Group Boxes */
-            QGroupBox {
-                border: 1px solid #e0e0e0;
-                border-radius: 8px;
-                margin-top: 24px;
-                padding-top: 10px;
-                font-weight: bold;
-                color: #333;
-                background-color: #ffffff;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                subcontrol-position: top left;
-                padding: 0 5px;
-                left: 10px;
-                background-color: #ffffff;
-            }
-
-            /* Inputs & Combos */
-            QComboBox {
-                border: 1px solid #ccc;
-                border-radius: 4px;
-                padding: 4px;
-                min-width: 80px;
-                color: #333;
-                background-color: #fff;
-            }
-            QComboBox::drop-down {
-                border: 0px;
-            }
-            QComboBox QAbstractItemView {
-                background-color: #fff;
-                color: #333;
-                selection-background-color: #e0e0e0;
-                selection-color: #000;
-            }
-
-            /* Scroll Areas */
-            QScrollArea, QScrollArea > QWidget > QWidget {
-                background-color: #ffffff;
-                border: none;
-            }
-
-            /* Labels */
-            QLabel {
-                color: #2c3e50;
-                background-color: transparent;
-            }
-
-            /* Table */
-            QTableWidget {
-                background-color: #ffffff;
-                color: #333;
-                gridline-color: #e0e0e0;
-                border: 1px solid #e0e0e0;
-                selection-background-color: #e3f2fd;
-                selection-color: #000;
-            }
-            QHeaderView::section {
-                background-color: #f5f5f5;
-                color: #333;
-                padding: 5px;
-                border: 1px solid #e0e0e0;
-                font-weight: bold;
-            }
-            QTableCornerButton::section {
-                background-color: #f5f5f5;
-                border: 1px solid #e0e0e0;
-            }
-
-            /* Calendar */
-            QCalendarWidget QWidget {
-                alternate-background-color: #f9f9f9;
-            }
-            QCalendarWidget QToolButton {
-                color: #333;
-                icon-size: 20px;
-                background-color: transparent;
-            }
-            QCalendarWidget QMenu {
-                background-color: #fff;
-                color: #333;
-            }
-            QCalendarWidget QSpinBox {
-                color: #333;
-                background-color: #fff;
-                selection-background-color: #1976d2;
-                selection-color: #fff;
-            }
-            QCalendarWidget QAbstractItemView:enabled {
-                color: #333;
-                background-color: #fff;
-                selection-background-color: #ff9800; /* Vibrant Orange for Pop */
-                selection-color: #fff;
-                outline: 0;
-            }
-            QCalendarWidget QAbstractItemView::item:selected {
-                background-color: transparent;
-                color: #000;
-                font-weight: bold;
-                border: 2px solid #1976d2;
-            }
-            QCalendarWidget QAbstractItemView::item:hover {
-                background-color: transparent;
-                border: 2px solid #1976d2;
-                color: #000;
-            }
-        """)
-
-        # Force Light Palette
-        light_palette = QPalette()
-        light_palette.setColor(QPalette.Window, QColor(255, 255, 255))
-        light_palette.setColor(QPalette.WindowText, QColor(0, 0, 0))
-        light_palette.setColor(QPalette.Base, QColor(255, 255, 255))
-        light_palette.setColor(QPalette.AlternateBase, QColor(245, 245, 245))
-        light_palette.setColor(QPalette.ToolTipBase, QColor(255, 255, 255))
-        light_palette.setColor(QPalette.ToolTipText, QColor(0, 0, 0))
-        light_palette.setColor(QPalette.Text, QColor(0, 0, 0))
-        light_palette.setColor(QPalette.Button, QColor(245, 245, 245))
-        light_palette.setColor(QPalette.ButtonText, QColor(0, 0, 0))
-        light_palette.setColor(QPalette.BrightText, QColor(255, 0, 0))
-        light_palette.setColor(QPalette.Highlight, QColor(25, 118, 210))
-        light_palette.setColor(QPalette.HighlightedText, QColor(255, 255, 255))
-        self.setPalette(light_palette)
+        # Note: Global theme is managed by qdarktheme via SystemTrayApp
+        # Only add minimal custom styling for specific elements that need it
 
         self.loop = loop or asyncio.get_event_loop()
         self.entry_repo = TimeEntryRepository()
@@ -371,31 +277,22 @@ class HistoryWindow(QWidget):
         legend_label.setStyleSheet("font-weight: bold; margin-right: 10px;")
         legend_layout.addWidget(legend_label)
 
-        vacation_legend = QLabel("  Vacation  ")
-        vacation_legend.setStyleSheet(
-            "background-color: #90EE90; border: 1px solid #ccc; "
-            "padding: 4px 8px; border-radius: 4px; margin-right: 5px;"
-        )
-        legend_layout.addWidget(vacation_legend)
+        # Store legend labels for dynamic theme updates
+        self.vacation_legend = QLabel("  Vacation  ")
+        legend_layout.addWidget(self.vacation_legend)
 
-        sickness_legend = QLabel("  Sickness  ")
-        sickness_legend.setStyleSheet(
-            "background-color: #FFB6C1; border: 1px solid #ccc; "
-            "padding: 4px 8px; border-radius: 4px; margin-right: 5px;"
-        )
-        legend_layout.addWidget(sickness_legend)
+        self.sickness_legend = QLabel("  Sickness  ")
+        legend_layout.addWidget(self.sickness_legend)
 
-        holiday_legend = QLabel("  🏳 Holiday  ")
-        holiday_legend.setStyleSheet(
-            "background-color: #ADD8E6; border: 1px solid #ccc; "
-            "padding: 4px 8px; border-radius: 4px; margin-right: 5px;"
-        )
-        holiday_legend.setToolTip("Official German holidays")
-        legend_layout.addWidget(holiday_legend)
+        self.holiday_legend = QLabel("  🏳 Holiday  ")
+        self.holiday_legend.setToolTip("Official German holidays")
+        legend_layout.addWidget(self.holiday_legend)
 
-        hint_label = QLabel("(Right-click date to cycle)")
-        hint_label.setStyleSheet("color: #777; font-style: italic; font-size: 11px;")
-        legend_layout.addWidget(hint_label)
+        self.hint_label = QLabel("(Right-click date to cycle)")
+        legend_layout.addWidget(self.hint_label)
+
+        # Apply initial theme-aware colors
+        self._update_legend_colors()
 
         legend_layout.addStretch()
         calendar_layout.addLayout(legend_layout)
@@ -405,10 +302,11 @@ class HistoryWindow(QWidget):
         # Work Regulations Panel
         regulations_group = QGroupBox("Work Regulations")
         regulations_group.setCheckable(False)
+        # Use minimal styling that works with both themes
         regulations_group.setStyleSheet("""
             QGroupBox {
                 font-weight: bold;
-                border: 2px solid #ccc;
+                border: 1px solid palette(mid);
                 border-radius: 6px;
                 margin-top: 12px;
                 padding-top: 16px;
@@ -656,6 +554,66 @@ class HistoryWindow(QWidget):
 
         right_layout.addLayout(btn_layout)
         layout.addLayout(right_layout, stretch=3) # Make right side wider
+
+    def _is_dark_mode(self) -> bool:
+        """Detect if dark mode is active based on palette"""
+        palette = self.palette()
+        bg_color = palette.color(palette.ColorRole.Window)
+        return bg_color.lightness() < 128
+
+    def _update_legend_colors(self):
+        """Update legend colors based on current theme"""
+        is_dark = self._is_dark_mode()
+
+        if is_dark:
+            # Dark mode - use muted colors with light text
+            vacation_style = (
+                "background-color: #1b5e20; color: white; "
+                "padding: 4px 8px; border-radius: 4px; margin-right: 5px;"
+            )
+            sickness_style = (
+                "background-color: #b71c1c; color: white; "
+                "padding: 4px 8px; border-radius: 4px; margin-right: 5px;"
+            )
+            holiday_style = (
+                "background-color: #0d47a1; color: white; "
+                "padding: 4px 8px; border-radius: 4px; margin-right: 5px;"
+            )
+            hint_style = "color: #999; font-style: italic; font-size: 11px;"
+        else:
+            # Light mode - use brighter colors
+            vacation_style = (
+                "background-color: #a5d6a7; color: #1b5e20; "
+                "padding: 4px 8px; border-radius: 4px; margin-right: 5px;"
+            )
+            sickness_style = (
+                "background-color: #ef9a9a; color: #b71c1c; "
+                "padding: 4px 8px; border-radius: 4px; margin-right: 5px;"
+            )
+            holiday_style = (
+                "background-color: #90caf9; color: #0d47a1; "
+                "padding: 4px 8px; border-radius: 4px; margin-right: 5px;"
+            )
+            hint_style = "color: #666; font-style: italic; font-size: 11px;"
+
+        self.vacation_legend.setStyleSheet(vacation_style)
+        self.sickness_legend.setStyleSheet(sickness_style)
+        self.holiday_legend.setStyleSheet(holiday_style)
+        self.hint_label.setStyleSheet(hint_style)
+
+    def changeEvent(self, event):
+        """Handle theme changes"""
+        if event.type() == QEvent.PaletteChange:
+            self.update_theme()
+        super().changeEvent(event)
+
+    def update_theme(self):
+        """Update theme for all components when theme changes"""
+        self._update_legend_colors()
+        # Update calendar colors
+        if hasattr(self, 'calendar'):
+            self.calendar._update_theme_colors()
+            self.calendar.updateCells()
 
     def _open_accounting(self):
         """Open accounting management dialog"""
