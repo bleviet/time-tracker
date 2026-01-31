@@ -61,10 +61,12 @@ class StatusCalendarWidget(QCalendarWidget):
             QCalendarWidget QAbstractItemView::item:selected {
                 background-color: transparent;
                 border: 2px solid #1976d2;
+                color: palette(text);
             }
             QCalendarWidget QAbstractItemView::item:hover {
                 background-color: transparent;
                 border: 2px solid #90caf9;
+                color: palette(text);
             }
         """)
 
