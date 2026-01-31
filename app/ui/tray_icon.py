@@ -249,24 +249,6 @@ class SystemTrayApp:
         show_action.triggered.connect(self._show_main_window)
         menu.addAction(show_action)
 
-
-
-        menu.addSeparator()
-
-        # View History
-        history_action = QAction("Monthly Overview...", self.app)
-        history_action.triggered.connect(self._show_history_window)
-        menu.addAction(history_action)
-
-
-
-        menu.addSeparator()
-
-        # Settings
-        settings_action = QAction("Settings...", self.app)
-        settings_action.triggered.connect(self._show_settings)
-        menu.addAction(settings_action)
-
         menu.addSeparator()
 
         # Quit Action
