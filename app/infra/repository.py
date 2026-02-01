@@ -121,11 +121,11 @@ class AccountingRepository:
                 select(AccountingModel).where(AccountingModel.id == accounting.id)
             )
             model = result.scalar_one()
-            
+
             model.name = accounting.name
             model.attributes = accounting.attributes
             model.is_active = accounting.is_active
-            
+
             await session.commit()
             return accounting
 
@@ -317,6 +317,27 @@ class TimeEntryRepository:
             entry_model = result.scalar_one_or_none()
             return TimeEntry.model_validate(entry_model) if entry_model else None
 
+    async def get_orphaned_entries(self) -> List[TimeEntry]:
+        """Get all disconnected active entries (start_time < today)"""
+        session = await self._get_session()
+        async with session:
+            # Definition of "orphaned":
+            # 1. Active (end_time is None)
+            # 2. Started before today (orphaned from a previous session/crash)
+
+            today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+
+            result = await session.execute(
+                select(TimeEntryModel).where(
+                    and_(
+                        TimeEntryModel.end_time.is_(None),
+                        TimeEntryModel.start_time < today_start
+                    )
+                )
+            )
+            entry_models = result.scalars().all()
+            return [TimeEntry.model_validate(em) for em in entry_models]
+
     async def get_interrupted_entries(self) -> List[TimeEntry]:
         """Get all interrupted entries that haven't been handled yet"""
         session = await self._get_session()
@@ -401,11 +422,16 @@ class TimeEntryRepository:
         """Get all time entries for a specific task that overlap with the given time range"""
         session = await self._get_session()
         async with session:
+            # For active entries (end_time is NULL), only include if start_time is within range
+            # For completed entries, use standard overlap logic
             query = select(TimeEntryModel).where(
                 and_(
                     TimeEntryModel.task_id == task_id,
                     TimeEntryModel.start_time < end_time,
-                    (TimeEntryModel.end_time == None) | (TimeEntryModel.end_time > start_time)
+                    (
+                        (TimeEntryModel.end_time == None) & (TimeEntryModel.start_time >= start_time) |
+                        (TimeEntryModel.end_time != None) & (TimeEntryModel.end_time > start_time)
+                    )
                 )
             ).order_by(TimeEntryModel.start_time.desc())
 

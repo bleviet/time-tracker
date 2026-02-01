@@ -288,9 +288,51 @@ class SystemTrayApp:
             self.backup_timer.timeout.connect(self._check_scheduled_backup)
             self.backup_timer.start(30 * 60 * 1000)  # 30 minutes in milliseconds
 
+            # Check for orphaned entries (crash recovery)
+            self._check_orphaned_entries()
+
         except Exception as e:
             QMessageBox.critical(None, "Initialization Error",
                                f"Failed to initialize application:\n{e}")
+
+    def _check_orphaned_entries(self):
+        """Check for and recover orphaned entries from previous sessions"""
+        self.loop.create_task(self._process_orphaned_entries())
+
+    async def _process_orphaned_entries(self):
+        """Process orphaned entries async"""
+        try:
+            repo = self.timer.entry_repo
+            orphans = await repo.get_orphaned_entries()
+
+            if not orphans:
+                return
+
+            recovered_count = 0
+            for entry in orphans:
+                # Calculate likely end time based on recorded duration
+                # duration_seconds is updated periodically, so this is the "last known active time"
+                inferred_end_time = entry.start_time + datetime.timedelta(seconds=entry.duration_seconds)
+
+                # Check for plausibility - if duration is 0, maybe it just started and crashed?
+                # If duration is 0, set end_time to start_time (0 duration)
+
+                entry.end_time = inferred_end_time
+                entry.notes = (entry.notes or "") + " [Recovered: Auto-closed after unclean shutdown]"
+
+                await repo.update(entry)
+                recovered_count += 1
+
+            if recovered_count > 0:
+                self.tray_icon.showMessage(
+                    "Session Recovery",
+                    f"Recovered {recovered_count} unfinished task(s) from previous session.",
+                    QSystemTrayIcon.Information,
+                    5000
+                )
+
+        except Exception as e:
+            print(f"Failed to recover orphaned entries: {e}")
 
     async def _load_tasks(self):
         """Load tasks from database"""
