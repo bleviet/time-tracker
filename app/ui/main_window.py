@@ -10,7 +10,7 @@ from typing import List
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout, QLineEdit,
     QLabel, QCompleter, QMessageBox, QApplication, QPushButton,
-    QDialog, QVBoxLayout
+    QDialog, QVBoxLayout, QSlider
 )
 from PySide6.QtCore import Qt, Signal, QStringListModel, QEvent, QUrl
 from PySide6.QtGui import QFont, QShortcut, QKeySequence, QPalette
@@ -425,7 +425,7 @@ class MainWindow(QMainWindow):
             self._on_task_entered()
 
     def _show_video_tutorial(self) -> None:
-        """Open the video tutorial in an internal player dialog."""
+        """Open the video tutorial in an internal player dialog with controls."""
         video_path = get_resource_path("docs/tutorial/video/TimeTracker_VideoTutorial.mp4")
         if not video_path.exists():
             QMessageBox.warning(
@@ -452,22 +452,136 @@ class MainWindow(QMainWindow):
         dialog.setWindowFlag(Qt.WindowMaximizeButtonHint, True)
 
         layout = QVBoxLayout(dialog)
-        video_widget = QVideoWidget(dialog)
-        layout.addWidget(video_widget)
 
+        # Video display widget
+        video_widget = QVideoWidget(dialog)
+        layout.addWidget(video_widget, stretch=1)
+
+        # Controls layout
+        controls_layout = QHBoxLayout()
+        controls_layout.setContentsMargins(10, 5, 10, 10)
+
+        # Play/Pause button
+        play_pause_btn = QPushButton("⏸")
+        play_pause_btn.setFixedSize(40, 30)
+        play_pause_btn.setCursor(Qt.PointingHandCursor)
+        play_pause_btn.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                border: 1px solid #666;
+                border-radius: 5px;
+                font-size: 16px;
+            }
+            QPushButton:hover {
+                background-color: rgba(100, 100, 100, 0.3);
+            }
+        """)
+        controls_layout.addWidget(play_pause_btn)
+
+        # Timeline slider
+        timeline_slider = QSlider(Qt.Horizontal)
+        timeline_slider.setRange(0, 0)
+        timeline_slider.setCursor(Qt.PointingHandCursor)
+        timeline_slider.setStyleSheet("""
+            QSlider::groove:horizontal {
+                height: 6px;
+                background: #444;
+                border-radius: 3px;
+            }
+            QSlider::handle:horizontal {
+                width: 14px;
+                height: 14px;
+                margin: -4px 0;
+                background: #1976d2;
+                border-radius: 7px;
+            }
+            QSlider::handle:horizontal:hover {
+                background: #2196f3;
+            }
+            QSlider::sub-page:horizontal {
+                background: #1976d2;
+                border-radius: 3px;
+            }
+        """)
+        controls_layout.addWidget(timeline_slider, stretch=1)
+
+        # Time label (current / total)
+        time_label = QLabel("00:00 / 00:00")
+        time_label.setStyleSheet("font-size: 12px; color: #888; margin-left: 10px;")
+        controls_layout.addWidget(time_label)
+
+        layout.addLayout(controls_layout)
+
+        # Media player setup
         player = QMediaPlayer(dialog)
         audio_output = QAudioOutput(dialog)
         player.setAudioOutput(audio_output)
         player.setVideoOutput(video_widget)
         player.setSource(QUrl.fromLocalFile(str(video_path)))
 
+        # State tracking for slider dragging
+        is_slider_pressed = [False]
+
+        def _format_time(ms: int) -> str:
+            """Format milliseconds to MM:SS."""
+            total_seconds = ms // 1000
+            minutes = total_seconds // 60
+            seconds = total_seconds % 60
+            return f"{minutes:02d}:{seconds:02d}"
+
+        def _on_duration_changed(duration: int) -> None:
+            timeline_slider.setRange(0, duration)
+            time_label.setText(f"00:00 / {_format_time(duration)}")
+
+        def _on_position_changed(position: int) -> None:
+            if not is_slider_pressed[0]:
+                timeline_slider.setValue(position)
+            duration = player.duration()
+            time_label.setText(f"{_format_time(position)} / {_format_time(duration)}")
+
+        def _on_slider_pressed() -> None:
+            is_slider_pressed[0] = True
+
+        def _on_slider_released() -> None:
+            is_slider_pressed[0] = False
+            player.setPosition(timeline_slider.value())
+
+        def _on_slider_moved(position: int) -> None:
+            duration = player.duration()
+            time_label.setText(f"{_format_time(position)} / {_format_time(duration)}")
+
+        def _toggle_play_pause() -> None:
+            if player.playbackState() == QMediaPlayer.PlayingState:
+                player.pause()
+                play_pause_btn.setText("▶")
+            else:
+                player.play()
+                play_pause_btn.setText("⏸")
+
+        def _on_playback_state_changed(state) -> None:
+            if state == QMediaPlayer.PlayingState:
+                play_pause_btn.setText("⏸")
+            else:
+                play_pause_btn.setText("▶")
+
         def _handle_video_error(*_args) -> None:
             QMessageBox.warning(self, tr("error"), tr("main.video_playback_error"))
 
+        # Connect signals
+        player.durationChanged.connect(_on_duration_changed)
+        player.positionChanged.connect(_on_position_changed)
+        player.playbackStateChanged.connect(_on_playback_state_changed)
         player.errorOccurred.connect(_handle_video_error)
+
+        timeline_slider.sliderPressed.connect(_on_slider_pressed)
+        timeline_slider.sliderReleased.connect(_on_slider_released)
+        timeline_slider.sliderMoved.connect(_on_slider_moved)
+
+        play_pause_btn.clicked.connect(_toggle_play_pause)
+
         dialog.finished.connect(player.stop)
 
-        dialog.resize(900, 506)
+        dialog.resize(900, 560)
         player.play()
         dialog.exec()
 
