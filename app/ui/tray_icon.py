@@ -544,6 +544,11 @@ class SystemTrayApp:
 
         # Close main window if open
         if self.main_window:
+            # Disconnect closed signal to prevent "minimized to tray" notification
+            try:
+                self.main_window.closed.disconnect(self._on_main_window_closed)
+            except (RuntimeError, TypeError):
+                pass
             self.main_window.close()
 
         # Close event loop
