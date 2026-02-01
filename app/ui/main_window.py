@@ -598,26 +598,32 @@ class MainWindow(QMainWindow):
         except Exception as e:
             QMessageBox.warning(self, "Error", f"Failed to start task:\n{e}")
 
+    task_created = Signal(Task)  # Signal emitted when a new task is created
+
     async def _start_task_by_name(self, task_name: str):
         """Find or create task and start tracking"""
-        # Check if task exists
-        existing_task = None
-        for task in self.tasks:
-            if task.name.lower() == task_name.lower():
-                existing_task = task
-                break
+        # Search for existing task
+        task = next((t for t in self.tasks if t.name.lower() == task_name.lower()), None)
 
-        # Create new task if it doesn't exist
-        if not existing_task:
-            task_repo = TaskRepository()
-            new_task = Task(name=task_name)
-            created_task = await task_repo.create(new_task)
-            self.tasks.append(created_task)
-            self._update_completer()
-            existing_task = created_task
+        if task:
+            await self.timer_service.start_task(task.id)
+        else:
+            # Create new task
+            try:
+                task_repo = TaskRepository()
+                new_task = Task(name=task_name)
+                created_task = await task_repo.create(new_task)
 
-        # Start tracking
-        await self.timer_service.start_task(existing_task.id)
+                self.tasks.append(created_task)
+                self._update_completer()
+
+                self.task_created.emit(created_task)
+
+                await self.timer_service.start_task(created_task.id)
+            except Exception as e:
+                print(f"Error creating task: {e}")
+                # Re-raise or handle? Main caller catches generic exception
+                raise e
 
     def _on_timer_tick(self, formatted_time: str, seconds: int):
         """Update timer display on each tick"""

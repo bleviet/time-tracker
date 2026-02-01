@@ -254,8 +254,11 @@ class HistoryWindow(QWidget):
         self.undo_stack = []
 
         # Initialize CalendarService for German holiday detection
-        german_state = getattr(self.settings, 'german_state', 'BY')
-        self.calendar_service = CalendarService(german_state=german_state)
+        self.calendar_service = CalendarService(
+            german_state=self.settings.preferences.german_state,
+            respect_holidays=self.settings.preferences.respect_holidays,
+            respect_weekends=self.settings.preferences.respect_weekends
+        )
 
         self.tasks: List[Task] = []
         self.current_entries: List[TimeEntry] = []
@@ -270,6 +273,13 @@ class HistoryWindow(QWidget):
 
         # Register for language changes
         on_language_changed(self._on_language_change)
+
+    def _run_async(self, coro):
+        """Helper to run coroutine whether loop is running or not"""
+        if self.loop.is_running():
+            self.loop.create_task(coro)
+        else:
+            self.loop.run_until_complete(coro)
 
     def _on_language_change(self, lang):
         self.retranslate_ui()
@@ -922,22 +932,25 @@ class HistoryWindow(QWidget):
 
     def _load_tasks(self):
         """Load tasks for sorting/displaying and for the manual entry dialog"""
-        try:
-            self.loop.run_until_complete(self._fetch_tasks())
-            # After tasks are loaded, load entries for today
-            self._on_date_selected()
-            # Load month status for calendar coloring
-            today = QDate.currentDate()
-            self.loop.run_until_complete(self._refresh_month_status(today.year(), today.month()))
-        except Exception as e:
-            print(f"Error loading tasks: {e}")
+        async def sequence():
+            try:
+                await self._fetch_tasks()
+                # After tasks are loaded, load entries for today
+                self._on_date_selected()
+                # Load month status for calendar coloring
+                today = QDate.currentDate()
+                await self._refresh_month_status(today.year(), today.month())
+            except Exception as e:
+                print(f"Error loading tasks: {e}")
+
+        self._run_async(sequence())
 
     async def _fetch_tasks(self):
         self.tasks = await self.task_repo.get_all_active()
 
     def _on_month_changed(self, year, month):
         """Fetch status data when calendar page changes"""
-        self.loop.run_until_complete(self._refresh_month_status(year, month))
+        self._run_async(self._refresh_month_status(year, month))
 
     async def _refresh_month_status(self, year, month):
         """Load status (Work/Vacation/Sickness/Holiday) for the whole month"""
@@ -1167,7 +1180,8 @@ class HistoryWindow(QWidget):
         self.date_label.setText(QLocale().toString(qdate, QLocale.LongFormat))
 
         # Fetch entries asynchronously
-        self.loop.run_until_complete(self._refresh_current_date_entries())
+        # Fetch entries asynchronously
+        self._run_async(self._refresh_current_date_entries())
 
     async def _refresh_current_date_entries(self):
         """Async method to refresh entries for the currently selected date"""
@@ -1231,6 +1245,12 @@ class HistoryWindow(QWidget):
 
             hours, remainder = divmod(duration, 3600)
             minutes, seconds = divmod(remainder, 60)
+
+            # Use rounding to nearest minute for display to reduce visual discrepancies
+            # e.g. 1m 59s should show as 2m, not 1m
+            total_minutes = round(duration / 60)
+            hours, minutes = divmod(total_minutes, 60)
+
             dur_str = f"{hours:02d}:{minutes:02d}"
             self.table.setItem(row, 3, QTableWidgetItem(dur_str))
 
@@ -1244,8 +1264,9 @@ class HistoryWindow(QWidget):
         for row, (name, duration) in enumerate(sorted_totals):
             self.summary_table.setItem(row, 0, QTableWidgetItem(name))
 
-            hours, remainder = divmod(duration, 3600)
-            minutes, seconds = divmod(remainder, 60)
+            # Round sum for summary as well
+            total_minutes = round(duration / 60)
+            hours, minutes = divmod(total_minutes, 60)
             dur_str = f"{hours:02d}:{minutes:02d}"
 
             self.summary_table.setItem(row, 1, QTableWidgetItem(dur_str))
@@ -1261,8 +1282,8 @@ class HistoryWindow(QWidget):
         total_name_item.setFont(font)
         self.summary_table.setItem(total_row, 0, total_name_item)
 
-        hours, remainder = divmod(day_total_seconds, 3600)
-        minutes, seconds = divmod(remainder, 60)
+        total_minutes = round(day_total_seconds / 60)
+        hours, minutes = divmod(total_minutes, 60)
         total_dur_str = f"{hours:02d}:{minutes:02d}"
 
         total_dur_item = QTableWidgetItem(total_dur_str)

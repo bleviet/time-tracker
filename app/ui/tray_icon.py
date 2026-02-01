@@ -219,8 +219,8 @@ class SystemTrayApp:
         """Connect service signals to UI handlers"""
         # Timer signals
         self.timer.tick.connect(self.update_tooltip)
-        self.timer.task_started.connect(lambda tid: None)  # Could show notification
-        self.timer.task_stopped.connect(lambda tid, secs: None)
+        self.timer.task_started.connect(self._on_task_started)
+        self.timer.task_stopped.connect(self._on_task_stopped)
 
         # Notification signals
         self.timer.target_reached.connect(self._on_target_reached)
@@ -248,6 +248,27 @@ class SystemTrayApp:
             15000
         )
 
+    def _on_task_started(self, task_id: int):
+        """Handle task start event"""
+        if self.history_window:
+            self.history_window.refresh_data()
+
+    def _on_task_stopped(self, task_id: int, total_seconds: int):
+        """Handle task stop event"""
+        if self.history_window:
+            self.history_window.refresh_data()
+
+    def _on_task_created(self, task: Task):
+        """Handle new task creation"""
+        # Add to local cache if not already present
+        if not any(t.id == task.id for t in self.tasks):
+            self.tasks.append(task)
+            self.setup_menu()
+
+        # Notify History Window
+        if self.history_window:
+            self.history_window.refresh_data()
+
     def _async_init(self):
         """Async initialization tasks"""
         try:
@@ -268,6 +289,7 @@ class SystemTrayApp:
             self.main_window.update_theme(self.user_prefs.theme)  # Apply saved theme
             self.main_window.closed.connect(self._on_main_window_closed)
             self.main_window.show_history.connect(self._show_history_window)
+            self.main_window.task_created.connect(self._on_task_created)
             self.main_window.show()
 
             # Close splash screen now that main window is ready
