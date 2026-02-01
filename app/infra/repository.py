@@ -14,7 +14,7 @@ from typing import List, Optional, Dict
 import json
 from pathlib import Path
 
-from sqlalchemy import select, update, and_
+from sqlalchemy import select, update, and_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.models import Task, TimeEntry, Accounting, UserPreferences
@@ -158,11 +158,17 @@ class TaskRepository:
 
     async def get_all_active(self) -> List[Task]:
         """Get all non-archived tasks"""
+        return await self.get_all(include_archived=False)
+
+    async def get_all(self, include_archived: bool = True) -> List[Task]:
+        """Get all tasks, optionally filtering active only"""
         session = await self._get_session()
         async with session:
-            result = await session.execute(
-                select(TaskModel).where(TaskModel.is_active == True)
-            )
+            stmt = select(TaskModel)
+            if not include_archived:
+                stmt = stmt.where(TaskModel.is_active == True)
+            
+            result = await session.execute(stmt)
             task_models = result.scalars().all()
             return [Task.model_validate(tm) for tm in task_models]
 
@@ -229,6 +235,29 @@ class TaskRepository:
             result = await session.execute(delete(TaskModel))
             await session.commit()
             return result.rowcount
+
+    async def get_by_name(self, name: str, include_archived: bool = True) -> Optional[Task]:
+        """Get a task by name, optionally including archived ones"""
+        session = await self._get_session()
+        async with session:
+            stmt = select(TaskModel).where(func.lower(TaskModel.name) == name.lower())
+            if not include_archived:
+                stmt = stmt.where(TaskModel.is_active == True)
+                
+            result = await session.execute(stmt)
+            task_model = result.scalar_one_or_none()
+            return Task.model_validate(task_model) if task_model else None
+
+    async def unarchive(self, task_id: int) -> None:
+        """Unarchive a task (restore it)"""
+        session = await self._get_session()
+        async with session:
+            await session.execute(
+                update(TaskModel)
+                .where(TaskModel.id == task_id)
+                .values(is_active=True, archived_at=None)
+            )
+            await session.commit()
 
 
 class TimeEntryRepository:

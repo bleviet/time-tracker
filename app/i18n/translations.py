@@ -145,6 +145,10 @@ TRANSLATIONS = {
         "task_edit.accounting": "Accounting:",
         "task_edit.none": "None",
 
+        # Dialogs - Task Restoration
+        "task.restore_title": "Restore Task",
+        "task.restore_message": "Task '{name}' is currently archived. Do you want to restore it?",
+
         # Dialogs - Manual Entry
         "manual_entry.title_add": "Add Manual Entry",
         "manual_entry.title_edit": "Edit Entry",
@@ -248,6 +252,7 @@ TRANSLATIONS = {
         "task_mgmt.load_error": "Failed to load tasks: {error}",
         "task_mgmt.update_error": "Failed to update task: {error}",
         "task_mgmt.archive_error": "Failed to archive task: {error}",
+        "task_mgmt.show_archived": "Show Archived",
 
         # Accounting Management
         "acc_mgmt.title": "Manage Accounting",
@@ -459,6 +464,10 @@ TRANSLATIONS = {
         "task_edit.accounting": "Kontierung:",
         "task_edit.none": "Keine",
 
+        # Dialogs - Task Restoration
+        "task.restore_title": "Aufgabe wiederherstellen",
+        "task.restore_message": "Die Aufgabe '{name}' ist archiviert. Möchten Sie sie wiederherstellen?",
+
         # Dialogs - Manual Entry
         "manual_entry.title_add": "Manuellen Eintrag erstellen",
         "manual_entry.title_edit": "Eintrag bearbeiten",
@@ -562,6 +571,7 @@ TRANSLATIONS = {
         "task_mgmt.load_error": "Aufgaben konnten nicht geladen werden: {error}",
         "task_mgmt.update_error": "Aufgabe konnte nicht aktualisiert werden: {error}",
         "task_mgmt.archive_error": "Aufgabe konnte nicht archiviert werden: {error}",
+        "task_mgmt.show_archived": "Archivierte anzeigen",
 
         # Accounting Management
         "acc_mgmt.title": "Kontierung verwalten",

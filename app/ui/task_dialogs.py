@@ -5,7 +5,7 @@ from datetime import datetime
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QTableWidget, QTableWidgetItem, 
     QPushButton, QHBoxLayout, QMessageBox, QHeaderView,
-    QMenu, QComboBox
+    QMenu, QComboBox, QCheckBox
 )
 from PySide6.QtGui import QAction
 from PySide6.QtCore import Qt
@@ -67,6 +67,11 @@ class TaskManagementDialog(QDialog):
         
         btn_layout.addWidget(add_btn)
         # btn_layout.addWidget(edit_btn)
+        
+        self.show_archived_cb = QCheckBox(tr("task_mgmt.show_archived"))
+        self.show_archived_cb.stateChanged.connect(self._load_data)
+        btn_layout.addWidget(self.show_archived_cb)
+        
         btn_layout.addStretch()
         
         layout.addLayout(btn_layout)
@@ -77,7 +82,9 @@ class TaskManagementDialog(QDialog):
             self.accounting_profiles = self.loop.run_until_complete(self.acc_repo.get_all_active())
             
             # Load Tasks
-            self.tasks = self.loop.run_until_complete(self.repo.get_all_active())
+            # Load Tasks
+            show_archived = self.show_archived_cb.isChecked()
+            self.tasks = self.loop.run_until_complete(self.repo.get_all(include_archived=show_archived))
             
             self._refresh_table()
         except Exception as e:

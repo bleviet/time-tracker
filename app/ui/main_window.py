@@ -602,28 +602,61 @@ class MainWindow(QMainWindow):
 
     async def _start_task_by_name(self, task_name: str):
         """Find or create task and start tracking"""
-        # Search for existing task
+        # Search for existing active task
         task = next((t for t in self.tasks if t.name.lower() == task_name.lower()), None)
-
+        
         if task:
             await self.timer_service.start_task(task.id)
         else:
-            # Create new task
+            # Check for archived task or create new
             try:
                 task_repo = TaskRepository()
-                new_task = Task(name=task_name)
-                created_task = await task_repo.create(new_task)
-
-                self.tasks.append(created_task)
-                self._update_completer()
-
-                self.task_created.emit(created_task)
-
-                await self.timer_service.start_task(created_task.id)
+                # Check DB for task (including archived)
+                existing = await task_repo.get_by_name(task_name, include_archived=True)
+                
+                created_task = None
+                
+                if existing and not existing.is_active:
+                    # Found archived task -> Ask to restore
+                    reply = QMessageBox.question(
+                        self, 
+                        tr("task.restore_title"),
+                        tr("task.restore_message").format(name=existing.name), 
+                        QMessageBox.Yes | QMessageBox.No, 
+                        QMessageBox.Yes
+                    )
+                    
+                    if reply == QMessageBox.Yes:
+                        await task_repo.unarchive(existing.id)
+                        existing.is_active = True
+                        existing.archived_at = None
+                        created_task = existing
+                    else:
+                        # User cancelled restoration
+                        return
+                        
+                elif existing:
+                    # Found active task that wasn't in local list (rare sync issue?)
+                    created_task = existing
+                else:
+                    # Create entirely new task
+                    new_task = Task(name=task_name)
+                    created_task = await task_repo.create(new_task)
+                
+                # Add to local list and start
+                if created_task:
+                    # Avoid duplicates in local list
+                    if not any(t.id == created_task.id for t in self.tasks):
+                        self.tasks.append(created_task)
+                        self._update_completer()
+                        self.task_created.emit(created_task)
+                    
+                    await self.timer_service.start_task(created_task.id)
+                    
             except Exception as e:
-                print(f"Error creating task: {e}")
-                # Re-raise or handle? Main caller catches generic exception
-                raise e
+                print(f"Error creating/restoring task: {e}")
+                # Re-raise to show generic error if needed, but logging is safer for UI not to crash loop
+                QMessageBox.warning(self, tr("error"), f"Failed to start task: {e}")
 
     def _on_timer_tick(self, formatted_time: str, seconds: int):
         """Update timer display on each tick"""
