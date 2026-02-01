@@ -15,7 +15,15 @@ Requirements:
 """
 
 import sys
+import os
 from pathlib import Path
+
+# Suppress verbose Qt Multimedia/FFmpeg logging
+os.environ["QT_LOGGING_RULES"] = "qt.multimedia.ffmpeg.debug=false;qt.multimedia.ffmpeg.info=false"
+
+# Use native Windows Media Foundation backend on Windows to avoid FFmpeg log spam
+if os.name == 'nt':
+    os.environ["QT_MEDIA_BACKEND"] = "windows"
 
 # Add app directory to path
 sys.path.insert(0, str(Path(__file__).parent))
