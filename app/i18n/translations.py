@@ -136,8 +136,8 @@ TRANSLATIONS = {
         "interruption.title": "Welcome Back",
         "interruption.message": "You were away for {minutes:.1f} minutes.",
         "interruption.question": "How should we handle this time?",
-        "interruption.btn_break": "It was a Break\\n(Ignore time)",
-        "interruption.btn_work": "I was working\\n(Add to current task)",
+        "interruption.btn_break": "It was a Break\n(Ignore time)",
+        "interruption.btn_work": "I was working\n(Add to current task)",
 
         # Dialogs - Task Edit
         "task_edit.title": "Edit Task",
@@ -170,8 +170,8 @@ TRANSLATIONS = {
         "report.save_title": "Save Report",
         "report.select_file_error": "Please select an output file.",
         "report.success": "Success",
-        "report.saved_to": "Report saved to:\\n{path}",
-        "report.failed": "Failed to generate report:\\n{error}",
+        "report.saved_to": "Report saved to:\n{path}",
+        "report.failed": "Failed to generate report:\n{error}",
         "report.generating": "Saving & Generating...",
         "report.done": "Done!",
 
@@ -305,7 +305,7 @@ TRANSLATIONS = {
         "settings.backup_failed_title": "Backup Failed",
         "settings.backup_failed_msg": "Failed to create backup:",
         "settings.restore_confirm_title": "Confirm Restore",
-        "settings.restore_confirm_msg": "⚠️ WARNING: This will REPLACE all current data!\\n\\nAll existing tasks, time entries, and accounting profiles\\nwill be permanently deleted and replaced with the backup.\\n\\nThis action cannot be undone.\\n\\nContinue with restore?",
+        "settings.restore_confirm_msg": "⚠️ WARNING: This will REPLACE all current data!\n\nAll existing tasks, time entries, and accounting profiles\nwill be permanently deleted and replaced with the backup.\n\nThis action cannot be undone.\n\nContinue with restore?",
         "settings.restore_complete_title": "Restore Complete",
         "settings.restore_complete_msg": "Backup restored successfully!",
         "settings.restore_details": "Restored items",
@@ -450,8 +450,8 @@ TRANSLATIONS = {
         "interruption.title": "Willkommen zurück",
         "interruption.message": "Sie waren für {minutes:.1f} Minuten abwesend.",
         "interruption.question": "Wie soll diese Zeit behandelt werden?",
-        "interruption.btn_break": "Es war eine Pause\\n(Zeit ignorieren)",
-        "interruption.btn_work": "Ich habe gearbeitet\\n(Zur Aufgabe hinzufügen)",
+        "interruption.btn_break": "Es war eine Pause\n(Zeit ignorieren)",
+        "interruption.btn_work": "Ich habe gearbeitet\n(Zur Aufgabe hinzufügen)",
 
         # Dialogs - Task Edit
         "task_edit.title": "Aufgabe bearbeiten",
@@ -484,8 +484,8 @@ TRANSLATIONS = {
         "report.save_title": "Bericht speichern",
         "report.select_file_error": "Bitte wählen Sie eine Ausgabedatei.",
         "report.success": "Erfolg",
-        "report.saved_to": "Bericht gespeichert unter:\\n{path}",
-        "report.failed": "Berichtserstellung fehlgeschlagen:\\n{error}",
+        "report.saved_to": "Bericht gespeichert unter:\n{path}",
+        "report.failed": "Berichtserstellung fehlgeschlagen:\n{error}",
         "report.generating": "Speichern & Generieren...",
         "report.done": "Fertig!",
 
@@ -619,7 +619,7 @@ TRANSLATIONS = {
         "settings.backup_failed_title": "Sicherung fehlgeschlagen",
         "settings.backup_failed_msg": "Sicherung konnte nicht erstellt werden:",
         "settings.restore_confirm_title": "Wiederherstellung bestätigen",
-        "settings.restore_confirm_msg": "⚠️ WARNUNG: Dies wird ALLE aktuellen Daten ERSETZEN!\\n\\nAlle vorhandenen Aufgaben, Zeiteinträge und Kostenstellen\\nwerden dauerhaft gelöscht und durch die Sicherung ersetzt.\\n\\nDiese Aktion kann nicht rückgängig gemacht werden.\\n\\nMit der Wiederherstellung fortfahren?",
+        "settings.restore_confirm_msg": "⚠️ WARNUNG: Dies wird ALLE aktuellen Daten ERSETZEN!\n\nAlle vorhandenen Aufgaben, Zeiteinträge und Kostenstellen\nwerden dauerhaft gelöscht und durch die Sicherung ersetzt.\n\nDiese Aktion kann nicht rückgängig gemacht werden.\n\nMit der Wiederherstellung fortfahren?",
         "settings.restore_complete_title": "Wiederherstellung abgeschlossen",
         "settings.restore_complete_msg": "Sicherung erfolgreich wiederhergestellt!",
         "settings.restore_details": "Wiederhergestellte Elemente",
