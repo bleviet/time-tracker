@@ -323,16 +323,12 @@ class TimeEntryRepository:
         async with session:
             # Definition of "orphaned":
             # 1. Active (end_time is None)
-            # 2. Started before today (orphaned from a previous session/crash)
-
-            today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            # 2. Since the app is just starting (or this method is called explicitly to find orphans),
+            #    ANY active entry in the DB is considered an orphan because the in-memory state is empty.
 
             result = await session.execute(
                 select(TimeEntryModel).where(
-                    and_(
-                        TimeEntryModel.end_time.is_(None),
-                        TimeEntryModel.start_time < today_start
-                    )
+                    TimeEntryModel.end_time.is_(None)
                 )
             )
             entry_models = result.scalars().all()
