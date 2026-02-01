@@ -421,7 +421,7 @@ class HistoryWindow(QWidget):
         self.table = QTableWidget()
         self.table.setColumnCount(5)
         self.table.setHorizontalHeaderLabels([
-            tr("history.task"), tr("history.start"), tr("history.end"), 
+            tr("history.task"), tr("history.start"), tr("history.end"),
             tr("history.duration"), tr("history.notes")
         ])
         self.table.verticalHeader().setVisible(False)
@@ -569,7 +569,7 @@ class HistoryWindow(QWidget):
     def retranslate_ui(self):
         """Update UI strings on language change"""
         self.setWindowTitle(tr("history.title"))
-        
+
         # Legend
         self.legend_label.setText(tr("history.legend"))
         self.vacation_legend.setText(f"  {tr('status.vacation')}  ")
@@ -587,10 +587,10 @@ class HistoryWindow(QWidget):
 
         # Tables
         self.table.setHorizontalHeaderLabels([
-            tr("history.task"), tr("history.start"), tr("history.end"), 
+            tr("history.task"), tr("history.start"), tr("history.end"),
             tr("history.duration"), tr("history.notes")
         ])
-        
+
         self.summary_header.setText(tr("history.daily_summary"))
         self.summary_table.setHorizontalHeaderLabels([tr("history.task"), tr("history.duration")])
 
@@ -865,9 +865,20 @@ class HistoryWindow(QWidget):
             return
 
         entry = self.current_entries[row]
+
+        # Save state for undo
         try:
+            qdate = self.calendar.selectedDate()
+            start = datetime(qdate.year(), qdate.month(), qdate.day())
+            end = datetime(qdate.year(), qdate.month(), qdate.day(), 23, 59, 59)
+
+            self.undo_stack.append({
+                "start": start,
+                "end": end,
+                "entries": list(self.current_entries)
+            })
+
             self.loop.run_until_complete(self.entry_repo.delete(entry.id))
-            self._save_state_for_undo()
             self._on_date_selected()  # Refresh
         except Exception as e:
             QMessageBox.critical(self, tr("error"), f"{tr('history.delete_failed')}: {e}")
@@ -892,14 +903,14 @@ class HistoryWindow(QWidget):
             tr("history.duration"), tr("history.notes")
         ])
         self.add_btn.setText(f"+ {tr('history.add_entry')}")
-        
+
         self.summary_header.setText(tr("history.daily_summary"))
         self.summary_table.setHorizontalHeaderLabels([tr("history.task"), tr("history.duration")])
-        
+
         self.accounting_btn.setText(tr("history.manage_accounting"))
         self.tasks_btn.setText(tr("history.manage_tasks"))
         self.report_btn.setText(f"📊 {tr('history.generate_report')}")
-        
+
         # Refresh current view to update date label and violations text if needed
         self._on_date_selected()
 
