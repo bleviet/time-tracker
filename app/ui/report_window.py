@@ -18,7 +18,7 @@ import yaml
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QPushButton,
     QTabWidget, QWidget, QFileDialog, QComboBox,
-    QMessageBox, QGroupBox
+    QMessageBox, QGroupBox, QLabel
 )
 
 from app.domain.models import Task
