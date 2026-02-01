@@ -237,6 +237,7 @@ TRANSLATIONS = {
         "action.save": "Save",
         "action.cancel": "Cancel",
         "action.close": "Close",
+        "action.open_folder": "Open Folder",
         "error": "Error",
 
         # Task Management
@@ -556,6 +557,7 @@ TRANSLATIONS = {
         "action.save": "Speichern",
         "action.cancel": "Abbrechen",
         "action.close": "Schließen",
+        "action.open_folder": "Ordner öffnen",
         "error": "Fehler",
 
         # Task Management

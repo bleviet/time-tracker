@@ -20,6 +20,8 @@ from PySide6.QtWidgets import (
     QTabWidget, QWidget, QFileDialog, QComboBox,
     QMessageBox, QGroupBox, QLabel
 )
+from PySide6.QtGui import QDesktopServices
+from PySide6.QtCore import QUrl
 
 from app.domain.models import Task
 from app.infra.repository import TaskRepository
@@ -324,7 +326,24 @@ class ReportWindow(QDialog):
                     f.write(content)
 
             self.status_label.setText(tr("report.done"))
-            QMessageBox.information(self, tr("report.success"), tr("report.saved_to", path=path))
+            self.status_label.setText(tr("report.done"))
+            
+            # Custom Message Box with "Open Folder"
+            msg_box = QMessageBox(self)
+            msg_box.setWindowTitle(tr("report.success"))
+            msg_box.setText(tr("report.saved_to", path=path))
+            msg_box.setIcon(QMessageBox.Information)
+            
+            open_btn = msg_box.addButton(tr("action.open_folder"), QMessageBox.ActionRole)
+            close_btn = msg_box.addButton(QMessageBox.Ok)
+            msg_box.setDefaultButton(close_btn)
+            
+            msg_box.exec()
+            
+            if msg_box.clickedButton() == open_btn:
+                # Open parent folder
+                QDesktopServices.openUrl(QUrl.fromLocalFile(str(path.parent)))
+
             self.close()
 
         except Exception as e:
