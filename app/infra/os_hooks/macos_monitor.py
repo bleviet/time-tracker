@@ -99,7 +99,7 @@ if HAS_PYOBJC:
         """Helper class to receive macOS notifications"""
         
         def initWithMonitor_(self, monitor):
-            self = super(_MacOSObserver, self).init()
+            self = super().init()
             if self:
                 self.monitor = monitor
             return self
