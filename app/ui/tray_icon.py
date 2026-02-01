@@ -102,6 +102,10 @@ class SystemTrayApp:
         # Connect signals
         self._connect_signals()
 
+        # Background tasks
+        self.recovery_task = None
+
+
         # Setup UI
         self.tray_icon = QSystemTrayIcon(self._create_icon(), self.app)
         self.tray_icon.setToolTip("Time Tracker Ready")
@@ -297,7 +301,7 @@ class SystemTrayApp:
 
     def _check_orphaned_entries(self):
         """Check for and recover orphaned entries from previous sessions"""
-        self.loop.create_task(self._process_orphaned_entries())
+        self.recovery_task = self.loop.create_task(self._process_orphaned_entries())
 
     async def _process_orphaned_entries(self):
         """Process orphaned entries async"""
@@ -550,6 +554,15 @@ class SystemTrayApp:
             except (RuntimeError, TypeError):
                 pass
             self.main_window.close()
+
+        # Cancel background tasks
+        if self.recovery_task and not self.recovery_task.done():
+            self.recovery_task.cancel()
+            try:
+                # brief run to process cancellation
+                self.loop.run_until_complete(asyncio.sleep(0))
+            except Exception:
+                pass
 
         # Close event loop
         self.loop.close()
