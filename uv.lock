@@ -822,6 +822,7 @@ source = { virtual = "." }
 dependencies = [
     { name = "aiosqlite" },
     { name = "dbus-python", marker = "sys_platform == 'linux'" },
+    { name = "greenlet" },
     { name = "holidays" },
     { name = "jinja2" },
     { name = "pydantic" },
@@ -846,6 +847,7 @@ dev = [
 requires-dist = [
     { name = "aiosqlite", specifier = ">=0.22.1" },
     { name = "dbus-python", marker = "sys_platform == 'linux'", specifier = ">=1.4.0" },
+    { name = "greenlet", specifier = ">=3.0.0" },
     { name = "holidays", specifier = ">=0.89" },
     { name = "jinja2", specifier = ">=3.1.6" },
     { name = "pydantic", specifier = ">=2.12.5" },
