@@ -556,7 +556,7 @@ class SystemTrayApp:
 
     def _on_tray_icon_activated(self, reason):
         """Handle tray icon click"""
-        if reason == QSystemTrayIcon.DoubleClick:
+        if reason == QSystemTrayIcon.DoubleClick or reason == QSystemTrayIcon.Trigger:
             self._show_main_window()
 
     def _quit_application(self):
