@@ -493,6 +493,7 @@ class HistoryWindow(QWidget):
         self.summary_table.setHorizontalHeaderLabels([tr("history.task"), tr("history.duration")])
         self.summary_table.verticalHeader().setVisible(False)
         self.summary_table.setSelectionMode(QTableWidget.NoSelection)
+        self.summary_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.summary_table.setFocusPolicy(Qt.NoFocus)
 
         # Header setup
