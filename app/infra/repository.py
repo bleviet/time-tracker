@@ -302,6 +302,8 @@ class TimeEntryRepository:
                 update(TimeEntryModel)
                 .where(TimeEntryModel.id == entry.id)
                 .values(
+                    task_id=entry.task_id,
+                    start_time=entry.start_time,
                     end_time=entry.end_time,
                     duration_seconds=entry.duration_seconds,
                     was_interrupted=entry.was_interrupted,

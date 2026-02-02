@@ -154,14 +154,39 @@ class ManualEntryDialog(QDialog):
         if end_dt > now:
             QMessageBox.warning(self, tr("manual_entry.invalid_time_title"), tr("manual_entry.invalid_time_msg_future"))
             return
+
+        # Check if task exists
+        task_name = self.task_combo.currentText().strip()
+        if not task_name:
+            QMessageBox.warning(self, "Invalid Task", "Task name cannot be empty.")
+            return
+
+        existing = next((t for t in self.tasks if t.name.lower() == task_name.lower()), None)
+        if not existing:
+            # Task does not exist, ask user
+            ret = QMessageBox.question(
+                self,
+                "Create New Task?",
+                f"The task '{task_name}' does not exist.\nDo you want to create a new task?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No
+            )
+            if ret != QMessageBox.Yes:
+                return
             
         self.accept()
     
     def get_data(self):
         """Return the entered data"""
-        task_name = self.task_combo.currentText()
-        # Check if ID is in user data, otherwise it's a new task (None)
-        task_id = self.task_combo.currentData() 
+        task_name = self.task_combo.currentText().strip()
+        
+        # Resolve task_id from name manually to handle edits correctly
+        # currentData() might return old ID if user typed a name that exists but didn't select it from dropdown
+        task_id = None
+        for task in self.tasks:
+            if task.name.lower() == task_name.lower():
+                task_id = task.id
+                break
         
         date = self.date_edit.date().toPython()
         start_time = self.start_time.time().toPython()
