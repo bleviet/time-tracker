@@ -683,9 +683,9 @@ class HistoryWindow(QWidget):
     def _open_tasks(self):
         """Open task management dialog"""
         dialog = TaskManagementDialog(self)
-        if dialog.exec():
-            # Refresh tasks if needed (e.g. if names changed)
-            self._load_tasks()
+        dialog.exec()
+        # Refresh tasks regardless of result since dialog auto-saves changes
+        self._load_tasks()
 
     def _generate_report(self):
         """Open the report generation wizard"""
@@ -937,7 +937,9 @@ class HistoryWindow(QWidget):
             try:
                 await self._fetch_tasks()
                 # After tasks are loaded, load entries for today
-                self._on_date_selected()
+                # Explicitly await instead of using _on_date_selected() which spawns a background task
+                self.date_label.setText(QLocale().toString(self.calendar.selectedDate(), QLocale.LongFormat))
+                await self._refresh_current_date_entries()
                 # Load month status for calendar coloring
                 today = QDate.currentDate()
                 await self._refresh_month_status(today.year(), today.month())
