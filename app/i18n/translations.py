@@ -161,6 +161,10 @@ TRANSLATIONS = {
         "manual_entry.invalid_time_title": "Invalid Time",
         "manual_entry.invalid_time_msg_order": "End time must be after start time.",
         "manual_entry.invalid_time_msg_future": "Cannot add entries in the future.",
+        "manual_entry.invalid_task_title": "Invalid Task",
+        "manual_entry.invalid_task_msg": "Task name cannot be empty.",
+        "manual_entry.create_task_title": "Create New Task?",
+        "manual_entry.create_task_msg": "The task '{name}' does not exist.\nDo you want to create a new task?",
 
         # Report
         "report.title": "Generate Monthly Report",
@@ -253,6 +257,7 @@ TRANSLATIONS = {
         "task_mgmt.load_error": "Failed to load tasks: {error}",
         "task_mgmt.update_error": "Failed to update task: {error}",
         "task_mgmt.archive_error": "Failed to archive task: {error}",
+        "task_mgmt.duplicate_error": "A task with this name already exists.",
         "task_mgmt.show_archived": "Show Archived",
 
         # Accounting Management
@@ -481,6 +486,10 @@ TRANSLATIONS = {
         "manual_entry.invalid_time_title": "Ungültige Zeit",
         "manual_entry.invalid_time_msg_order": "Endzeit muss nach der Startzeit liegen.",
         "manual_entry.invalid_time_msg_future": "Einträge in der Zukunft sind nicht möglich.",
+        "manual_entry.invalid_task_title": "Ungültige Aufgabe",
+        "manual_entry.invalid_task_msg": "Aufgabenname darf nicht leer sein.",
+        "manual_entry.create_task_title": "Neue Aufgabe erstellen?",
+        "manual_entry.create_task_msg": "Die Aufgabe '{name}' existiert nicht.\nMöchten Sie eine neue Aufgabe erstellen?",
 
         # Report
         "report.title": "Monatsbericht erstellen",
@@ -573,6 +582,7 @@ TRANSLATIONS = {
         "task_mgmt.load_error": "Aufgaben konnten nicht geladen werden: {error}",
         "task_mgmt.update_error": "Aufgabe konnte nicht aktualisiert werden: {error}",
         "task_mgmt.archive_error": "Aufgabe konnte nicht archiviert werden: {error}",
+        "task_mgmt.duplicate_error": "Eine Aufgabe mit diesem Namen existiert bereits.",
         "task_mgmt.show_archived": "Archivierte anzeigen",
 
         # Accounting Management

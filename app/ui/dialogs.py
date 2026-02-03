@@ -158,7 +158,7 @@ class ManualEntryDialog(QDialog):
         # Check if task exists
         task_name = self.task_combo.currentText().strip()
         if not task_name:
-            QMessageBox.warning(self, "Invalid Task", "Task name cannot be empty.")
+            QMessageBox.warning(self, tr("manual_entry.invalid_task_title"), tr("manual_entry.invalid_task_msg"))
             return
 
         existing = next((t for t in self.tasks if t.name.lower() == task_name.lower()), None)
@@ -166,8 +166,8 @@ class ManualEntryDialog(QDialog):
             # Task does not exist, ask user
             ret = QMessageBox.question(
                 self,
-                "Create New Task?",
-                f"The task '{task_name}' does not exist.\nDo you want to create a new task?",
+                tr("manual_entry.create_task_title"),
+                tr("manual_entry.create_task_msg").format(name=task_name),
                 QMessageBox.Yes | QMessageBox.No,
                 QMessageBox.No
             )

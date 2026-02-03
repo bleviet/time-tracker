@@ -143,6 +143,15 @@ class TaskManagementDialog(QDialog):
             # Don't save empty names
             return
             
+        # Check for duplicates
+        for other_task in self.tasks:
+            if other_task.id != task.id and other_task.name.lower() == new_name.lower():
+                self.table.blockSignals(True)
+                item.setText(task.name) # Revert
+                QMessageBox.warning(self, tr("error"), tr("task_mgmt.duplicate_error"))
+                self.table.blockSignals(False)
+                return
+            
         task.name = new_name
         self._update_task(task)
 
@@ -190,7 +199,16 @@ class TaskManagementDialog(QDialog):
             self.table.blockSignals(False)
             
     def _add_task(self):
-        new_task = Task(name="New Task")
+        base_name = "New Task"
+        new_name = base_name
+        counter = 1
+        
+        # Find unique name
+        while any(t.name.lower() == new_name.lower() for t in self.tasks):
+            new_name = f"{base_name} ({counter})"
+            counter += 1
+            
+        new_task = Task(name=new_name)
         try:
             created = self.loop.run_until_complete(self.repo.create(new_task))
             self.tasks.append(created)

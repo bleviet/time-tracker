@@ -61,10 +61,10 @@ class SettingsDialog(QDialog):
         layout.addWidget(self.tabs)
 
         # Buttons
-        btns = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel)
-        btns.accepted.connect(self._save)
-        btns.rejected.connect(self.reject)
-        layout.addWidget(btns)
+        self.btns = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel)
+        self.btns.accepted.connect(self._save)
+        self.btns.rejected.connect(self.reject)
+        layout.addWidget(self.btns)
 
     def _setup_general_tab(self):
         layout = QFormLayout(self.general_tab)
@@ -492,7 +492,12 @@ class SettingsDialog(QDialog):
         self.btn_restore.setText(f"📥 {tr('settings.backup_restore')}")
         self.label_available_backups.setText(tr("settings.backup_available"))
         self.btn_refresh_backups.setText(tr("settings.backup_refresh"))
+        self.btn_refresh_backups.setText(tr("settings.backup_refresh"))
         self.btn_delete_backup.setText(tr("settings.backup_delete"))
+        
+        # Update Dialog Buttons
+        self.btns.button(QDialogButtonBox.Save).setText(tr("dialog.save"))
+        self.btns.button(QDialogButtonBox.Cancel).setText(tr("dialog.cancel"))
 
     def _update_last_backup_label(self):
         """Update the last backup date label"""
@@ -553,6 +558,9 @@ class SettingsDialog(QDialog):
             self._refresh_backup_list()
 
             self._loading = False  # Loading complete, allow theme changes
+            
+            # Apply translations to ensure buttons are correct
+            self.retranslate_ui()
 
         except Exception as e:
             self._loading = False
