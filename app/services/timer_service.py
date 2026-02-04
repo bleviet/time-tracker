@@ -137,7 +137,7 @@ class TimerService(QObject):
             total += sum(e.duration_seconds for e in entries)
         return total
 
-    async def stop_task(self):
+    async def stop_task(self, end_time: Optional[datetime.datetime] = None):
         """
         Stop tracking the current task.
         """
@@ -147,7 +147,17 @@ class TimerService(QObject):
         self.timer.stop()
 
         # Update entry with end time
-        self.current_entry.end_time = datetime.datetime.now()
+        self.current_entry.end_time = end_time or datetime.datetime.now()
+        
+        # If end_time is provided and we are in a session, we might want to adjust duration
+        # But if we were paused (typical use case for retroactive stop), duration is already frozen correct.
+        # If we were running, relying on the last tick is usually "good enough" (max 1s error).
+        # For precision, if end_time is provided and we were active, one could recalculate:
+        # if end_time and not self.is_paused:
+        #     elapsed = (end_time - self.session_start_time).total_seconds()
+        #     self.current_entry.duration_seconds = self.session_initial_seconds + int(elapsed)
+        # However, for the specific "unlock" case, we are paused, so duration is correct.
+        
         await self.entry_repo.update(self.current_entry)
 
         task_id = self.active_task.id

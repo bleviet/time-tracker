@@ -251,12 +251,14 @@ class SystemTrayApp:
     def _on_task_started(self, task_id: int):
         """Handle task start event"""
         if self.history_window:
-            self.history_window.refresh_data()
+            # Defer refresh to allow current async operation to complete
+            # and ensure refresh_data runs with a fresh event loop context
+            QTimer.singleShot(0, self.history_window.refresh_data)
 
     def _on_task_stopped(self, task_id: int, total_seconds: int):
         """Handle task stop event"""
         if self.history_window:
-            self.history_window.refresh_data()
+            QTimer.singleShot(0, self.history_window.refresh_data)
 
     def _on_task_created(self, task: Task):
         """Handle new task creation"""
@@ -267,7 +269,7 @@ class SystemTrayApp:
 
         # Notify History Window
         if self.history_window:
-            self.history_window.refresh_data()
+            QTimer.singleShot(0, self.history_window.refresh_data)
 
     def _async_init(self):
         """Async initialization tasks"""
@@ -511,6 +513,8 @@ class SystemTrayApp:
             self.lock_time = None
             return
 
+        should_resume = True
+
         # Ask user what to do with the time
         if self.settings.preferences.ask_on_unlock and self.timer.active_task:
             dialog = InterruptionDialog(elapsed_minutes)
@@ -520,22 +524,35 @@ class SystemTrayApp:
 
             # Handle the interruption
             try:
-                self.loop.run_until_complete(
-                    self.timer.mark_interruption(was_work, int(elapsed_seconds))
-                )
-
                 if was_work:
+                    self.loop.run_until_complete(
+                        self.timer.mark_interruption(True, int(elapsed_seconds))
+                    )
                     self.tray_icon.showMessage(
                         "Time Added",
                         f"Added {elapsed_minutes:.1f} minutes to task",
                         QSystemTrayIcon.Information,
                         3000
                     )
+                else:
+                    # Break logic: Stop the task at lock time, restart it now.
+                    # This creates a gap in the timeline corresponding to the break.
+                    task_id = self.timer.active_task.id
+                    self.loop.run_until_complete(
+                        self.timer.stop_task(end_time=self.lock_time)
+                    )
+                    self.loop.run_until_complete(
+                        self.timer.start_task(task_id)
+                    )
+                    should_resume = False  # Task already started fresh
+                    
             except Exception as e:
                 print(f"Error handling interruption: {e}")
 
-        # Resume tracking
-        self.timer.resume_task()
+        # Resume tracking if we haven't restarted
+        if should_resume:
+            self.timer.resume_task()
+            
         self.lock_time = None
 
     def _show_main_window(self):
