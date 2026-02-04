@@ -404,8 +404,13 @@ class SystemTrayApp:
             self.settings_window.theme_changed.connect(self.change_theme)
             self.settings_window.font_scale_changed.connect(self.change_font_scale)
             self.settings_window.language_changed.connect(self.change_language)
+            self.settings_window.preferences_saved.connect(self._on_preferences_saved)
         self.settings_window.show()
         self.settings_window.activateWindow()
+
+    def _on_preferences_saved(self):
+        """Reload user preferences when settings are saved"""
+        self.user_prefs = self.loop.run_until_complete(self.user_repo.get_preferences())
 
     def _on_data_restored(self):
         """Handle data restoration - refresh all windows"""
@@ -484,7 +489,7 @@ class SystemTrayApp:
 
     def _on_system_locked(self):
         """Handle system lock event"""
-        if not self.settings.preferences.auto_pause_on_lock:
+        if not self.user_prefs.auto_pause_on_lock:
             return
 
         self.lock_time = datetime.datetime.now()
@@ -508,7 +513,7 @@ class SystemTrayApp:
         elapsed_minutes = elapsed_seconds / 60
 
         # Only ask if away longer than threshold
-        if elapsed_minutes < self.settings.preferences.auto_pause_threshold_minutes:
+        if elapsed_minutes < self.user_prefs.auto_pause_threshold_minutes:
             self.timer.resume_task()
             self.lock_time = None
             return
@@ -516,7 +521,7 @@ class SystemTrayApp:
         should_resume = True
 
         # Ask user what to do with the time
-        if self.settings.preferences.ask_on_unlock and self.timer.active_task:
+        if self.user_prefs.ask_on_unlock and self.timer.active_task:
             dialog = InterruptionDialog(elapsed_minutes)
             dialog.exec()
 

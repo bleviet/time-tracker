@@ -28,6 +28,8 @@ class SettingsDialog(QDialog):
     font_scale_changed = Signal(float)
     # Emitted when language changes
     language_changed = Signal(str)
+    # Emitted when settings are saved
+    preferences_saved = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -596,6 +598,7 @@ class SettingsDialog(QDialog):
             self.prefs.backup_directory = backup_dir if backup_dir else None
 
             self.loop.run_until_complete(self.repo.update_preferences(self.prefs))
+            self.preferences_saved.emit()
             self.accept()
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to save settings: {e}")
